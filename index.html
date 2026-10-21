@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="SanduBAH: prévia interativa de um ambiente para planejar, organizar conhecimento e acompanhar agentes. Somente dados fictícios, sem conexão com modelos.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; frame-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>SanduBAH · Prévia interativa</title>
+  <link rel="icon" href="assets/sandubah.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#inicio"><img src="assets/sandubah.png" alt="Sanduíche de pão cacetinho em pixel art"><strong>SanduBAH</strong></a>
+    <p class="eyebrow">SEU ESPAÇO DE CRIAÇÃO <i></i></p>
+    <nav aria-label="Navegação principal" id="navigation"></nav>
+    <div class="safe-card"><span>◇</span><strong>Um gostinho do que vem aí.</strong><p>Dados fictícios. Sem login, IA real ou acesso aos seus arquivos.</p><a href="https://github.com/lgsMangolt/SanduBAH" target="_blank" rel="noopener noreferrer">Conheça o projeto ↗</a></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><span>Meu ambiente / <strong id="breadcrumb">Novo projeto</strong></span><div><button id="notice-toggle" type="button">♧ Avisos</button><span class="pill">● Prévia pública</span></div></header>
+    <main>
+      <div class="demo-banner"><span>PRÉVIA INTERATIVA</span> Explore à vontade: os agentes, mensagens e resultados desta página são uma demonstração, não execução de IA.</div>
+      <header class="page-heading"><div><p class="eyebrow">DO PRIMEIRO BAH AO PRIMEIRO BUILD</p><h1 id="title">Sua ideia encontra uma equipe.</h1><p id="subtitle">Planeje, organize e acompanhe. Sem perder o fio do projeto.</p></div><img src="assets/sandubah.png" alt="" class="hero-logo"></header>
+      <section id="content" aria-live="polite"></section>
+      <footer>Feito para quem cria com IA. <span>SanduBAH · prévia demonstrativa · sem telemetria de aplicação</span></footer>
+    </main>
+  </div>
+  <section id="notices" class="notices" aria-label="Avisos da demonstração" hidden></section>
+  <dialog id="confirm"><div class="dialog-content"><span class="eyebrow">VOCÊ CONTINUA NO CONTROLE</span><h2>Experimentar a simulação?</h2><p>Esta prévia só anima etapas e cria cartões fictícios em memória. Não chama Codex, Claude ou modelos locais, não gasta cota e não cria arquivos no computador.</p><p>Na versão desktop, o trabalho real exige outra confirmação com o escopo e o executor.</p><div class="actions"><button id="cancel" type="button">Agora não</button><button id="approve" class="primary" type="button">Simular uma vez</button></div></div></dialog>
+</body>
+</html>

@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+node_modules/
+.env
+.env.*
+*.log
+credentials*
+auth.json
+.codex/
+.claude/
+profile/
+harnesses/
+brain/
+media/
