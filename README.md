@@ -17,6 +17,8 @@ Ou baixe os arquivos deste repositório e abra `index.html`. Não há instalaç�
 - **Novo projeto:** conversa, escolha ilustrativa de IA e força, Grill-me/Vibewase e confirmação antes da simulação.
 - **Meus projetos:** lista única ligada ao conceito de Cérebro, com busca e continuidade.
 - **Prévia lateral:** protótipo isolado, arquivos ilustrativos e etapas da simulação.
+- **Etapas do produto:** Planejamento, Protótipo, MVP e Produção separados das missões; concluir uma tarefa não declara o produto pronto.
+- **Checklist de MVP:** exemplos de persistência, permissões e WhatsApp, com itens pendentes e conexão sujeita a autorização. Nenhuma integração é executada nesta página.
 - **Catálogo:** harness, MCP, CLI, skills, plugins e AR Board, sem instalação automática.
 - **Cérebro:** Markdown conectado, preparação de estudo e de fine-tuning.
 - **Escritório:** galpão gaúcho em pixel art, com opção 2D leve e representação dos papéis.
@@ -53,6 +55,10 @@ Abra uma issue com sugestões de fluxo, acessibilidade ou documentação. Não p
 O SanduBAH nasceu como uma personalização local do [Ruflo, por ruvnet](https://github.com/ruvnet/ruflo). Esta prévia estática não é um release oficial do Ruflo e não redistribui o produto completo, modelos de IA ou CLIs proprietárias. A licença MIT e os avisos do projeto de origem são preservados no arquivo `LICENSE`. Os nomes dos provedores pertencem aos respectivos titulares; não há afiliação implícita.
 
 ## Próximos passos
+
+### Atualização da prévia · 21/10/2026
+
+Os projetos fictícios e a lateral agora distinguem critérios do produto de tarefas do agente. O exemplo Aurora está em **MVP · a iniciar**, mesmo tendo tarefas concluídas. Explore **Meus projetos → Etapas e checklist**, ou a aba **Etapas** na lateral. Os checklists são ilustrativos: não são uma aprovação real, uma estimativa de prazo ou uma implementação de banco, autenticação ou WhatsApp.
 
 - Revisar dependências, instalação, limites e privacidade antes de distribuir o desktop.
 - Documentar integrações e testes reproduzíveis por plataforma.
