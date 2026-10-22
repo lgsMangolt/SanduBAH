@@ -125,6 +125,7 @@ try {
     Write-Host "Validation stopped at $stage."
     Write-Host $_.Exception.Message
 } finally {
+    if (Test-Path -LiteralPath (Join-Path $directory 'download-progress.json')) { $report.downloadProgress = Get-Content -LiteralPath (Join-Path $directory 'download-progress.json') -Raw | ConvertFrom-Json }
     if (Test-Path -LiteralPath (Join-Path $directory 'download.json')) { $report.download = Get-Content -LiteralPath (Join-Path $directory 'download.json') -Raw | ConvertFrom-Json }
     if (Test-Path -LiteralPath (Join-Path $directory 'installed.json')) { $report.installed = Get-Content -LiteralPath (Join-Path $directory 'installed.json') -Raw | ConvertFrom-Json }
     if (Test-Path -LiteralPath (Join-Path $directory 'authentication.json')) { $report.authentication = Get-Content -LiteralPath (Join-Path $directory 'authentication.json') -Raw | ConvertFrom-Json }
