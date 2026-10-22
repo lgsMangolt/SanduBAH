@@ -1,112 +1,94 @@
 # 🥪 SanduBAH
 
-**Sua ideia encontra uma equipe.**
+**App desktop para planejar projetos de software com agentes de IA (Codex e Claude) sem perder o contexto do projeto, com confirmação humana antes de cada ação.**
 
-Uma prévia interativa de um ambiente para desenvolvedores que querem planejar, organizar conhecimento e acompanhar agentes de IA sem perder o contexto do projeto.
+> **In English:** SanduBAH is a Windows desktop app (Electron + Node.js) that lets developers plan and run software projects with AI coding agents (OpenAI Codex CLI, Claude Code) while keeping project context in Markdown and requiring explicit human approval before any data is sent to a model or any change is applied. Stack: Electron · Node.js · MCP · PowerShell · GitHub Actions. [Live demo](https://lgsmangolt.github.io/SanduBAH/) · [Windows installer 0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)
 
-## Experimente
+[![Validação do site](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-site-journey.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-site-journey.yml)
+[![Validação do instalador](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-desktop-release.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-desktop-release.yml)
 
-**[Abrir a prévia pública](https://lgsmangolt.github.io/SanduBAH/)**
+![Escritório do SanduBAH em pixel art, onde os papéis dos agentes aparecem](assets/office.png)
 
-**[↓ Baixar SanduBAH 0.1.0 para Windows x64](https://github.com/lgsMangolt/SanduBAH/releases/download/v0.1.0/SanduBAH-Setup-0.1.0-x64.exe)** · ≈ 508 MiB · [Release, SHA-256 e relatório da VM](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)
+**[▶ Abrir a demonstração web](https://lgsmangolt.github.io/SanduBAH/)** · **[↓ Instalador Windows x64 0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/download/v0.1.0/SanduBAH-Setup-0.1.0-x64.exe)** (≈ 508 MiB, [SHA-256 e relatório da VM](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0))
 
-**[Tutorial interativo: instalar e conectar Codex ou Claude](https://lgsmangolt.github.io/SanduBAH/#install)**
+## Stack
 
-Para explorar somente a demonstração web, baixe os arquivos deste repositório e abra `index.html`. Essa demonstração não requer instalação, login, chave de API ou dependência de terceiros.
+**Electron 44** · **Node.js 24** · **MCP** (servidor local por stdio, via [Ruflo](https://github.com/ruvnet/ruflo)) · **PowerShell / C#** (launcher e build Windows) · **Playwright** (testes de interface) · **GitHub Actions** (instalador testado em VM Windows limpa) · Python (experimental, modelos locais)
 
-> **Esta é uma demonstração estática, não o aplicativo desktop completo.** Mensagens, projetos, papéis, etapas e resultados são fictícios. A página não chama modelos, não programa de verdade, não lê arquivos e não consome sua cota.
+## O que ele faz
 
-## Instalar o aplicativo desktop
+**Principal**
 
-1. Baixe o instalador Windows x64 pelo link acima. Confira a origem e o SHA-256 em `SHA256SUMS.txt` na mesma Release.
-2. Abra o instalador e siga o assistente por usuário. É uma **prévia experimental, ainda sem certificado Authenticode do Windows**. Se houver aviso de editor desconhecido, confira a origem antes de decidir; não desative proteções para contorná-lo.
-3. Abra o SanduBAH pelo atalho. A primeira preparação pode levar alguns minutos e mostra o progresso.
-4. Escolha um dos provedores a seguir. Não é preciso instalar os dois. Electron, Node e MCP local estão incluídos; as CLIs dos provedores, suas contas, assinaturas, Python e modelos locais não estão.
+- **Planejamento com agentes:** você descreve a ideia e escolhe Codex ou Claude, o modelo e a força de raciocínio. Antes de qualquer chamada, o app mostra exatamente o que será enviado.
+- **Execução isolada:** o Codex trabalha num workspace privado por projeto. O resultado só chega à sua cópia depois de revisão, com backup e detecção de conflito.
+- **Contexto persistente:** cada projeto (harness) guarda objetivo, equipe, missões e memória em arquivos Markdown, que são relidos a cada missão.
+- **Fila serial:** só um worker por vez, sem repetição automática. A fila para no primeiro erro.
 
-### Conectar Codex
+**Experimental**
 
-Siga a instalação **Windows nativa** na [documentação oficial do Codex CLI](https://learn.chatgpt.com/docs/codex/cli). Reabra o terminal, confira `codex --version` e execute `codex`. Escolha entrar com ChatGPT, conclua no navegador oficial e abra uma sessão para conferir os modelos da sua conta. Não copie credenciais para o site.
+- **Cérebro:** busca seletiva nos seus Markdown, que mostra as fontes usadas e separa tokens estimados dos tokens informados pelo provedor.
+- **Grill-me:** entrevista que questiona a ideia antes de planejar.
+- **Escritório:** visualização em pixel art dos papéis dos agentes.
+- **Referência jurídica:** consulta seletiva de normas por jurisdição, com a indicação de confirmar na fonte oficial.
+- **Modelos locais (Qwen/AirLLM):** síntese local sem executar comandos.
 
-### Conectar Claude
+## Rodar em 2 minutos
 
-Siga **Native Install → Windows PowerShell** na [documentação oficial do Claude Code](https://code.claude.com/docs/en/setup). Reabra o terminal, confira `claude --version` e execute `claude`. Conclua o login no navegador oficial com sua própria conta e acesso compatível. Não publique arquivos de autenticação.
+**Demonstração web.** É estática, sem dependências, login ou chamadas de API:
 
-### Conferir no SanduBAH
-
-1. Feche e reabra o aplicativo após instalar a CLI ou fazer login.
-2. Abra **Configurações → Conexões → Verificar conexões**. CLI e login detectados não garantem acesso a todos os modelos.
-3. Em **Novo projeto → Onde planejar**, escolha Codex ou Claude, um modelo e a força. Se o catálogo Codex estiver vazio, consulte **Atualizar cota Codex** para atualizá-lo pela conta.
-4. Envie uma pergunta curta de planejamento e revise a confirmação. Só então mensagem e Markdown selecionados são enviados ao provedor; isso pode consumir cota. Ações protegidas mantêm confirmações próprias.
-
-A prévia 0.1.0 detecta os locais nativos previstos. CLIs instaladas apenas no WSL, por npm ou em caminhos personalizados podem não ser reconhecidas. Para falhas de instalação ou login, consulte a documentação oficial antes de modificar seu ambiente. A página pública não autentica nem instala nada.
-
-O MCP é local por stdio; esse fluxo não exige gateway de modelos. As atualizações do SanduBAH são verificadas ao abrir e só baixam/instalam após confirmações; as CLIs têm seus próprios canais de atualização. Os dados ficam separados do programa e são preservados na reinstalação e desinstalação. Nenhum projeto, conversa ou chave pessoal do desenvolvedor acompanha o pacote.
-
-## Explore a proposta
-
-- **Novo projeto:** conversa, escolha ilustrativa de IA e força, Grill-me/Vibewase e confirmação antes da simulação.
-- **Meus projetos:** lista única ligada ao conceito de Cérebro, com busca e continuidade.
-- **Prévia lateral:** protótipo isolado, arquivos ilustrativos e etapas da simulação.
-- **Etapas do produto:** Planejamento, Protótipo, MVP e Produção separados das missões; concluir uma tarefa não declara o produto pronto.
-- **Checklist de MVP:** exemplos de persistência, permissões e WhatsApp, com itens pendentes e conexão sujeita a autorização. Nenhuma integração é executada nesta página.
-- **Catálogo:** harness, MCP, CLI, skills, plugins e AR Board, sem instalação automática.
-- **Cérebro:** Markdown conectado, preparação de estudo e de fine-tuning.
-- **Escritório:** galpão gaúcho em pixel art, com opção 2D leve e representação dos papéis.
-- **Configurações:** integrações explicadas, todas desconectadas nesta página.
-- **Tutoriais:** busca e guias passo a passo para explorar a demonstração e conhecer o fluxo desktop; os botões só navegam, sem iniciar ações.
-
-O desktop experimental combina CLIs instaladas, contexto Markdown e execução confirmada em workspaces privados. **O instalador independente está na Release; os arquivos da página continuam sendo apenas a demonstração.** O pacote foi testado em uma VM nova Windows Server 2025, incluindo instalação, reinstalação e desinstalação com dados fictícios. Isso não garante compatibilidade com todas as versões do Windows, CLIs ou integrações opcionais.
-
-## Privacidade
-
-- Somente projetos de demonstração: Aurora, Atlas e Farol.
-- Sem conversas, clientes, endereços, diretórios locais, Cérebro pessoal, credenciais, anexos ou logs do ambiente de desenvolvimento.
-- Sem analytics, formulários externos, fontes remotas ou chamadas de API pela aplicação.
-- Textos da simulação vivem apenas na memória da aba e desaparecem ao recarregar. Não inclua informações pessoais.
-- O provedor de hospedagem pode manter seus próprios registros de infraestrutura; isso é independente da aplicação.
-- A prévia não apresenta tokens fictícios como contagem real de um provedor.
-
-## Estrutura
-
-### Fontes desktop para desenvolvimento · 22/10/2026
-
-O código revisado da personalização desktop está em **[desktop/](desktop/README.md)**, com scripts, testes e **[resumo para continuar no Claude](desktop/CLAUDE.md)**. É um overlay sobre Ruflo, não uma cópia completa do monorepo nem um ambiente de build já validado em clone limpo.
-
-Inclui a lateral com Novo projeto em destaque, opções por projeto, estudos por tipo/Central, busca seletiva e avisos com contador 1–9/9+. A exportação usa lista explícita de arquivos, verificação de segredos/termos privados e remoção de metadados dos PNG. Não inclui projetos, Cérebro pessoal, conversas, chaves ou dependências do ambiente local.
-
-**Publicar fontes não atualiza o instalador:** a Release disponível continua sendo 0.1.0. As funcionalidades posteriores precisam de novo build, auditoria e teste em VM antes de uma nova Release. O guia Claude How To foi estudado como referência; checkpoints, novos gates e templates adicionais estão documentados como pendências, não como funcionalidades prontas.
-
-```text
-index.html       interface da demonstração
-style.css        visual responsivo
-app.mjs          navegação e simulação local
-prototype.html   projeto fictício na prévia isolada
-prototype.css    visual do projeto fictício
-assets/          identidade e cenário ilustrado
-.github/         validação do instalador em VM hospedada pelo GitHub
-ci/              testes de instalação, abertura e preservação de dados fictícios
+```bash
+git clone https://github.com/lgsMangolt/SanduBAH.git
+cd SanduBAH
+python -m http.server 8000   # depois abra http://localhost:8000
 ```
 
-## Feedback
+Também funciona abrindo `index.html` direto no navegador. Os projetos e resultados exibidos são fictícios.
 
-Abra uma issue com sugestões de fluxo, acessibilidade ou documentação. Não publique tokens, logs privados, conversas ou dados de clientes. Para vulnerabilidades, consulte `SECURITY.md` antes de abrir uma issue pública.
+**App desktop.** Use o [instalador](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) e siga o [tutorial interativo para instalar e conectar Codex ou Claude](https://lgsmangolt.github.io/SanduBAH/#install). Cada pessoa usa a própria CLI oficial e a própria conta.
 
-## Origem e créditos
+**Código do desktop.** Fica em [`desktop/`](desktop/README.md) e hoje é um *overlay* sobre o Ruflo. Ainda não roda sozinho a partir deste clone: montar o ambiente reproduzível com um único comando está no roadmap.
 
-O SanduBAH nasceu como uma personalização local do [Ruflo, por ruvnet](https://github.com/ruvnet/ruflo). Esta prévia estática não é um release oficial do Ruflo e não redistribui o produto completo, modelos de IA ou CLIs proprietárias. A licença MIT e os avisos do projeto de origem são preservados no arquivo `LICENSE`. Os nomes dos provedores pertencem aos respectivos titulares; não há afiliação implícita.
+## Arquitetura
 
-## Próximos passos
+```mermaid
+flowchart LR
+  UI["Interface<br/>index.html · world.mjs · planner.mjs"] -->|"contextBridge (sandbox)"| P["preload.cjs"]
+  P -->|IPC| M["main.cjs<br/>janela, IPC, diálogos de confirmação"]
+  M --> B["backend.cjs<br/>DesktopController: fila serial, políticas"]
+  B --> W["workspace.cjs<br/>harness em Markdown, workspace privado, aplicar com backup"]
+  B --> CP["cloud-planner.cjs<br/>planejamento via CLIs Codex / Claude"]
+  B --> CW["codex-worker.cjs<br/>codex exec no workspace"]
+  B --> MCP["MCP Ruflo (stdio)<br/>memória e coordenação"]
+  B --> K["knowledge.cjs<br/>Cérebro: busca seletiva com fontes"]
+```
 
-### Desktop e tutorial · 22/10/2026
+O renderer não tem acesso ao Node (`contextIsolation`, `sandbox`, `nodeIntegration: false`). Toda ação com efeito colateral passa pelo processo principal e por uma confirmação nativa.
 
-O botão de download aponta para o instalador auditado da Release 0.1.0. O guia **Instalar e conectar** explica a instalação, o login próprio nas CLIs oficiais, a verificação da conexão e a primeira conversa com confirmação. Não conecta contas pela página nem distribui projetos ou credenciais do desenvolvedor.
+## Decisões técnicas e desafios
 
-### Atualização da prévia · 21/10/2026
+- **Confirmação antes de enviar dados ao modelo.** Contexto privado e cota são do usuário. Por isso o app exibe a mensagem e os Markdown selecionados antes da chamada. Se o contexto passar do limite, a chamada é bloqueada em vez de ter o texto cortado sem aviso.
+- **O resultado do agente nunca sobrescreve sua cópia diretamente.** O Codex escreve num workspace separado. Para aplicar, o app compara o hash SHA-256 da origem com o do momento da preparação, recusa se outra pessoa ou agente alterou o arquivo e guarda um backup.
+- **Um worker por vez.** Rodar agentes em série evita dois escritores no mesmo arquivo e torna cada resultado rastreável. Uma interrupção vira estado "desconhecido" e nunca é repetida automaticamente.
+- **Instalador testado em VM limpa.** Um workflow do GitHub Actions instala, abre, reinstala e desinstala o app numa VM Windows Server 2025 nova, com dados fictícios, e verifica que os dados do usuário são preservados.
+- **Testes de regressão.** Mais de 200 testes com `node:test`, executados em série, cobrem caminhos maliciosos (UNC, ADS, hardlinks, `..`), manifestos adulterados, conflitos, cancelamentos e a fila.
 
-Os projetos fictícios e a lateral agora distinguem critérios do produto de tarefas do agente. O exemplo Aurora está em **MVP · a iniciar**, mesmo tendo tarefas concluídas. Explore **Meus projetos → Etapas e checklist**, ou a aba **Etapas** na lateral. Os checklists são ilustrativos: não são uma aprovação real, uma estimativa de prazo ou uma implementação de banco, autenticação ou WhatsApp.
+## Roadmap
 
-- Continuar revisando dependências, limites, compatibilidade e privacidade nas próximas versões do desktop.
-- Documentar integrações e testes reproduzíveis por plataforma.
-- Evoluir o fluxo com feedback da comunidade, sem prometer execução autônoma sem supervisão.
+- Ambiente de desenvolvimento reproduzível a partir de um clone (fork do Ruflo ou script de setup com commit fixado).
+- Checkpoints por missão, com diff e restauração confirmada.
+- Gates de qualidade determinísticos, com evidências de testes e artefatos.
+- Nova Release do instalador. Os fontes em `desktop/` são posteriores à 0.1.0, e publicar fontes não atualiza o instalador.
+
+O estado detalhado está em [`desktop/CLAUDE.md`](desktop/CLAUDE.md).
+
+## Privacidade e segurança
+
+A demonstração web não usa analytics, formulários, fontes remotas nem chamadas de API. O app desktop é uma prévia experimental, ainda sem certificado Authenticode. Ele não inclui CLIs, contas, chaves ou modelos, e verifica atualizações só com a sua confirmação. Para vulnerabilidades, veja [`SECURITY.md`](SECURITY.md). Não publique tokens, logs ou dados de clientes em issues.
+
+## Créditos e licença
+
+Construído sobre o [Ruflo, de ruvnet](https://github.com/ruvnet/ruflo) (MIT), cuja licença é preservada em [`LICENSE`](LICENSE). Este não é um release oficial do Ruflo. Os nomes dos provedores pertencem aos respectivos titulares, sem afiliação implícita.
+
+Desenvolvido com auxílio de Claude e Codex; arquitetura, decisões e validação são minhas.
 
 **Uma etapa verificável por vez. Bah.**
