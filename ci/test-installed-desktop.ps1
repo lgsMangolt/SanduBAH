@@ -67,7 +67,13 @@ function Invoke-Uninstaller {
 function Invoke-AppCheck([string]$Mode) {
     Write-Host "Checking the installed application: $Mode."
     $savedToken = $env:GH_TOKEN
-    try { Remove-Item Env:/GH_TOKEN; $output = & node (Join-Path $PSScriptRoot 'installed-desktop.cjs') $Mode; $exitCode = $LASTEXITCODE } finally { $env:GH_TOKEN = $savedToken }
+    $outputPath = Join-Path $env:RUNNER_TEMP ("sandubah-app-$Mode-" + [Guid]::NewGuid().ToString('N') + '.out')
+    $errorPath = $outputPath + '.err'
+    try { Remove-Item Env:/GH_TOKEN; $process = Start-Process -FilePath (Get-Command node).Source -ArgumentList @(('"' + (Join-Path $PSScriptRoot 'installed-desktop.cjs') + '"'),$Mode) -WindowStyle Hidden -PassThru -RedirectStandardOutput $outputPath -RedirectStandardError $errorPath } finally { $env:GH_TOKEN = $savedToken }
+    if (-not $process.WaitForExit(900000)) { & "$env:SystemRoot/System32/taskkill.exe" /PID $process.Id /T /F | Out-Null; throw 'The test-owned application check exceeded its deadline.' }
+    $exitCode = $process.ExitCode
+    if (Test-Path -LiteralPath $errorPath) { Get-Content -LiteralPath $errorPath | ForEach-Object { Write-Host $_ } }
+    $output = Get-Content -LiteralPath $outputPath
     if ($exitCode -ne 0) { throw "Installed application check failed: $Mode." }
     $result = ($output | Select-Object -Last 1) | ConvertFrom-Json
     if (-not $result.passed -or $result.workerLimit -ne 1 -or $result.modelCalls -ne 0) { throw 'Application check returned an invalid receipt.' }

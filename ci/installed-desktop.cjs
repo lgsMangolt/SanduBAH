@@ -15,7 +15,7 @@ const log=message=>process.stderr.write(`VM app check: ${message}\n`);
 const deadline=setTimeout(()=>{log('Hard deadline reached; stopping only the test-owned application.');application?.process().kill();process.exit(1);},13*60*1000);deadline.unref();
 async function run(){
   const environment={PATH:join(process.env.SystemRoot,'System32'),NODE_PATH:'',NODE_OPTIONS:''};for(const name of ['SystemRoot','WINDIR','COMSPEC','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])environment[name]=process.env[name];environment.HOME=environment.USERPROFILE;
-  const home=join(process.env.RUNNER_TEMP,'sandubah-empty-home');fs.mkdirSync(join(home,'Documents'),{recursive:true});environment.USERPROFILE=home;environment.HOME=home;
+  const home=join(process.env.RUNNER_TEMP,'sandubah-empty-home');for(const directory of ['Documents','AppData/Roaming','AppData/Local'])fs.mkdirSync(join(home,directory),{recursive:true});environment.USERPROFILE=home;environment.HOME=home;environment.APPDATA=join(home,'AppData/Roaming');
   log(`Starting the installed executable (${mode}).`);
   application=await electron.launch({executablePath:join(appDirectory,'SanduBAH.exe'),args:['--disable-gpu'],cwd:appDirectory,env:environment,timeout:120000});application.process().stderr.on('data',bytes=>process.stderr.write(bytes));
   await application.evaluate(({dialog})=>{const original=dialog.showErrorBox;dialog.showErrorBox=(title,content)=>{process.stderr.write(`Application startup error: ${title}: ${content}\n`);return original.call(dialog,title,content);};});
@@ -35,4 +35,4 @@ async function run(){
   }else{const fixture=JSON.parse(fs.readFileSync(fixtureFile,'utf8'));assert.ok(projects.some(project=>project.id===fixture.projectId));for(const file of fixture.files)assert.equal(digest(fs.readFileSync(file.path)),file.sha256);checks.push('fictional-project-and-canary-preserved-after-installation-cycle');}
   assert.deepEqual(errors,[]);log('Closing the application after successful checks.');await application.close();application=null;console.log(JSON.stringify({passed:true,mode,workerLimit:1,modelCalls:0,checks}));
 }
-run().catch(error=>{console.error(error.stack);process.exitCode=1;}).finally(async()=>{if(application){const child=application.process();await Promise.race([application.close().catch(()=>{}),new Promise(resolve=>setTimeout(resolve,10000))]);if(child.exitCode===null)child.kill();}clearTimeout(deadline);});
+run().then(()=>clearTimeout(deadline),error=>{console.error(error.stack);application?.process().kill();setTimeout(()=>process.exit(1),1000);});
