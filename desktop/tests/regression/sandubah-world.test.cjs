@@ -66,6 +66,23 @@ test('Codex bloqueia caminhos privados, importações binárias e conflitos',()=
   const prepared=app.projects.prepareCodex(project,{title:'test',instructions:'test',files:['src/example.js']},project.agents[0]);writeFileSync(join(prepared.workspace,'src/example.js'),'result');const artifact=app.projects.artifact(project.id,'src/example.js');writeFileSync(join(app.repositoryRoot,'src/example.js'),'Claude change');
   assert.throws(()=>app.projects.applyArtifact({id:project.id,path:artifact.path,version:artifact.version}),/origem mudou/);assert.equal(readFileSync(join(app.repositoryRoot,'src/example.js'),'utf8'),'Claude change');mkdirSync(join(prepared.workspace,'.codex'));assert.throws(()=>app.projects.prepareCodex(project,{files:[]},project.agents[0]),/configuração Codex/);
 });
+test('checkpoint registra aplicação, mostra diff e restaura somente com confirmação e sem mudança externa',async()=>{
+  const app=fixture();const project=projectWithMission(app);mkdirSync(join(app.repositoryRoot,'src'));const target=join(app.repositoryRoot,'src/example.js');writeFileSync(target,'linha 1\noriginal\nlinha 3');
+  const prepared=app.projects.prepareCodex(project,{title:'test',instructions:'test',files:['src/example.js']},project.agents[0]);writeFileSync(join(prepared.workspace,'src/example.js'),'linha 1\nalterado\nlinha 3');
+  const artifact=app.projects.artifact(project.id,'src/example.js');const applied=await app.applyArtifact({id:project.id,path:artifact.path,version:artifact.version});
+  const [entry]=app.projects.checkpoints(project.id);assert.equal(entry.id,applied.checkpointId);assert.equal(entry.status,'applied');
+  const checkpoint=app.projects.checkpoint(project.id,entry.id);assert.equal(checkpoint.canRestore,true);assert.deepEqual(checkpoint.diff.lines,[' linha 1','-original','+alterado',' linha 3']);
+  app.confirm=async()=>false;assert.equal((await app.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion})).cancelled,true);assert.match(readFileSync(target,'utf8'),/alterado/);
+  await assert.rejects(app.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:'stale'}),/mudou/);
+  app.confirm=async()=>true;writeFileSync(target,'mudança de outro agente');assert.equal(app.projects.checkpoints(project.id)[0].status,'external-change');
+  await assert.rejects(app.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion}),/não restaurável/);assert.throws(()=>app.projects.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion}),/fora do SanduBAH/);assert.equal(readFileSync(target,'utf8'),'mudança de outro agente');
+  writeFileSync(target,'linha 1\nalterado\nlinha 3');const backup=join(app.projects.location(project.id),'applied',entry.id,'src/example.js');writeFileSync(backup,'adulterado');assert.equal(app.projects.checkpoints(project.id)[0].status,'backup-invalid');
+  assert.throws(()=>app.projects.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion}),/backup/);writeFileSync(backup,'linha 1\noriginal\nlinha 3');
+  const restored=await app.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion});assert.equal(readFileSync(target,'utf8'),'linha 1\noriginal\nlinha 3');assert.equal(readFileSync(restored.safety,'utf8'),'linha 1\nalterado\nlinha 3');
+  assert.equal(app.projects.checkpoints(project.id)[0].status,'restored');assert.throws(()=>app.projects.restoreCheckpoint({id:project.id,checkpointId:entry.id,version:checkpoint.currentVersion}),/já foi restaurado/);
+  const again=app.projects.artifact(project.id,'src/example.js');assert.equal(again.conflict,false);assert.equal(again.canApply,true);
+  const manifest=join(app.projects.location(project.id),'checkpoints.json');const records=JSON.parse(readFileSync(manifest,'utf8'));records[0].path='src/../../escape';writeFileSync(manifest,JSON.stringify(records));assert.throws(()=>app.projects.checkpoints(project.id),/inválido/);
+});
 test('worker interrompido não conclui e dependência permanece pendente',async()=>{
   const app=fixture();let project=projectWithMission(app);project.missions=[];app.projects.save(project);
   for(const title of ['primeiro','segundo'])project=app.projectAction({action:'mission',id:project.id,input:{engine:'codex',title,instructions:'test',agentId:project.agents[0].id}});

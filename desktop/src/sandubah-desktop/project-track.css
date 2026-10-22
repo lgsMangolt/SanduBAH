@@ -1,0 +1,53 @@
+/* Trilha do projeto: cinco passos numa linha, o selecionado em destaque e o detalhe logo abaixo. */
+.project-track-heading h3{margin:0 0 4px}
+.project-track-heading p{margin:0 0 16px}
+.project-track-steps{list-style:none;margin:0 0 16px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.project-track-button{width:100%;height:100%;min-height:96px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.project-track-button:hover{border-color:#cfd6c9}
+.project-track-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.project-track-number{width:26px;height:26px;margin-bottom:4px;display:grid;place-items:center;border-radius:999px;background:#eef1eb;color:#4c5750;font-size:13px;font-weight:700}
+.project-track-title{font-size:13px;font-weight:650;line-height:1.25}
+.project-track-status{font-size:12px;color:var(--muted)}
+.project-track-step.is-done .project-track-number{background:#2f5a3a;color:#fff}
+.project-track-step.is-active .project-track-number{background:var(--accent);color:#261d16}
+.project-track-step.is-skipped .project-track-button{border-style:dashed}
+.project-track-step.is-selected .project-track-button{border-color:#253c2e;box-shadow:inset 0 0 0 1px #253c2e}
+.project-track-detail{border-top:1px solid var(--line);padding-top:16px}
+.project-track-detail h4{margin:0 0 4px;font-size:16px}
+.project-track-detail>p{margin:0 0 12px}
+.project-track-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.project-track-preview{margin-top:12px}
+.project-track-preview summary{cursor:pointer;font-size:13px;font-weight:600}
+.project-track-preview pre{max-height:320px;overflow:auto;margin:8px 0 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:#f7f9f3;font:12px/1.55 "Cascadia Mono",Consolas,monospace;white-space:pre-wrap}
+.project-track .interview-panel{margin-top:12px;max-width:none}
+
+/* Histórico de versões. */
+.project-history-changes{margin:4px 0 16px}
+.project-history-changes summary{cursor:pointer;font-size:13px;font-weight:600}
+.project-history-files{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;max-height:220px;overflow:auto}
+.project-history-files li{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.project-history-files code{font:12px/1.4 "Cascadia Mono",Consolas,monospace;overflow-wrap:anywhere}
+.project-history-state{flex-shrink:0;padding:2px 8px;border-radius:999px;font-size:12px;background:#eef1eb;color:#4c5750}
+.project-history-state.is-new{background:#e6f2e4;color:#2f5a3a}
+.project-history-state.is-deleted{background:#f8e7e1;color:#8a3a1c}
+.project-history-form{display:grid;gap:12px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fafbf8;margin-bottom:16px}
+.project-history-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:12px}
+.project-history-field{display:grid;gap:6px}
+.project-history-field select,.project-history-field .text-input{width:100%;margin:0}
+.project-history-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.project-history-preview{font:12px/1.4 "Cascadia Mono",Consolas,monospace;padding:2px 8px;border-radius:6px;background:#eef1eb}
+.project-history-form .button.primary{justify-self:start}
+.project-history-versions{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.project-history-version{padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.project-history-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+.project-history-number{font:700 12px/1 "Cascadia Mono",Consolas,monospace;padding:4px 8px;border-radius:999px;background:#253c2e;color:#fff}
+.project-history-head strong{font-size:14px}
+.project-history-note{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.project-history-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+@media(max-width:700px){.project-history-row{grid-template-columns:1fr}}
+.project-history-github{padding:16px;border:1px solid var(--line);border-radius:12px;margin-bottom:16px}
+.project-history-github h4{margin:0 0 4px;font-size:16px}
+.project-history-github>p{margin:4px 0}
+.project-history-remote{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.project-history-remote .text-input{flex:1 1 280px;margin:0}
+.project-history-remote-url code{font:12px/1.4 "Cascadia Mono",Consolas,monospace;overflow-wrap:anywhere}

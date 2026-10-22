@@ -95,6 +95,22 @@ O backend conversa com o servidor MCP local. As CLIs rodam com MCP, plugins e ho
 - Modelos locais (Qwen/AirLLM) e preparação de fine-tuning
 - Skill de consulta jurídica
 
+### Novidades nos fontes, depois da v0.1.0
+
+Estas funcionalidades estão no código em [`desktop/`](desktop/README.md), com testes de regressão, mas **ainda não chegaram ao instalador**. A próxima Release precisa de um build e de uma validação próprios.
+
+- **Trilha do projeto:** prompt enxuto → Grill-me → prompt refinado (`PROMPT.md`, gerado localmente e lido pelos agentes) → rascunho → protótipos. Cada passo mostra o estado real, calculado a partir dos arquivos.
+- **Histórico de versões:** cada versão vira um commit no padrão `feat:`/`fix:`/`docs:`, num git local que fica fora da pasta do agente, com diff e volta a qualquer versão.
+- **Envio ao GitHub:** só para repositórios `github.com`, com confirmação que mostra repositório, visibilidade e versões, e sem force push.
+- **Checkpoints:** cada arquivo aplicado ao projeto pode ser restaurado com diff e confirmação; se o arquivo mudou fora do app, nada é sobrescrito.
+- **Gauchinhos:** agentes personalizados que você cria do zero, separados do Cérebro.
+  - **Conversa e correção:** 👍 guarda um exemplo e 👎 pede a resposta certa, que vira lição.
+  - **Tarefas:** entregas em Markdown, com nota de 1 a 5 que também vira lição.
+  - **Dataset:** exportado para ajuste fino LoRA, com um verificador honesto da máquina e o script de treino gerado.
+  - **Campo de treino:** aprendizado por reforço de verdade, do zero e na CPU (Q-learning), para pular, correr e escalar, com animação em pixel art.
+  - **Ferramentas e skills supervisionadas:** o agente trabalha numa cópia de ensaio pelo Codex com sandbox e sem rede, com limites de tempo e de arquivos, e você revisa antes de aplicar.
+- **Interface repaginada:** escala tipográfica, contraste WCAG e hierarquia revisados.
+
 Veja o que vem pela frente no [ROADMAP](ROADMAP.md).
 
 ## Estrutura do repositório

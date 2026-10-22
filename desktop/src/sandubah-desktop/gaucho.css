@@ -1,0 +1,103 @@
+/* Aba Gauchinhos: lista e criação à esquerda, o gauchinho aberto à direita. */
+.gaucho-layout{display:grid;grid-template-columns:minmax(240px,300px) minmax(0,1fr);gap:24px;align-items:start}
+.gaucho-side,.gaucho-main{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+.gaucho-side h2,.gaucho-header h2{margin:0 0 4px;font-size:18px}
+.gaucho-side>p{margin:0 0 16px}
+.gaucho-cards{display:grid;gap:8px;margin-bottom:20px}
+.gaucho-card{display:grid;gap:4px;width:100%;padding:12px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer}
+.gaucho-card strong{font-size:14px}
+.gaucho-card small{font-size:12px;line-height:1.4}
+.gaucho-card.is-selected{border-color:#253c2e;box-shadow:inset 0 0 0 1px #253c2e}
+.gaucho-create{display:grid;gap:8px;padding-top:16px;border-top:1px solid var(--line)}
+.gaucho-create h3{margin:0;font-size:14px}
+.gaucho-create .text-input{width:100%;margin:0}
+.gaucho-create .button{justify-self:start}
+.gaucho-header p{margin:0 0 4px}
+.gaucho-weight{font-size:12px;color:var(--subtle,#69726b)}
+.gaucho-tabs{margin:16px 0}
+.gaucho-messages{display:grid;gap:12px;max-height:52vh;overflow:auto;padding:4px 2px 12px}
+.gaucho-message{max-width:82%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fafbf8}
+.gaucho-message.is-user{justify-self:end;background:#eef3ea;border-color:#dbe4d4}
+.gaucho-message p{margin:4px 0 0;white-space:pre-wrap;font-size:14px;line-height:1.5}
+.gaucho-author{font-size:12px;font-weight:650;color:var(--subtle,#69726b)}
+.gaucho-rate{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.gaucho-thumb{min-height:30px;padding:4px 10px}
+.gaucho-fix,.gaucho-compose{display:grid;gap:8px;margin-top:8px}
+.gaucho-fix .text-input,.gaucho-compose .text-input{width:100%;margin:0}
+.gaucho-fix .button,.gaucho-compose .button{justify-self:start}
+.gaucho-compose{padding-top:12px;border-top:1px solid var(--line)}
+.gaucho-lessons,.gaucho-knowledge,.gaucho-settings{display:grid;gap:12px}
+.gaucho-lesson{padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.gaucho-lesson .text-input{width:100%;margin:8px 0 0}
+.gaucho-question{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.gaucho-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:650;background:#eef1eb;color:#4c5750}
+.gaucho-badge.is-correction{background:#fde9dc;color:#8a3a1c}
+.gaucho-badge.is-example{background:#e6f2e4;color:#2f5a3a}
+.gaucho-import{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.gaucho-import h3{flex-basis:100%;margin:0;font-size:14px}
+.gaucho-import .text-input{flex:1 1 240px;margin:0}
+.gaucho-sources{display:grid;gap:6px}
+.gaucho-source{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center;font-size:13px}
+.gaucho-source small{grid-column:2;font-size:12px;overflow-wrap:anywhere}
+.gaucho-sources>.button{justify-self:start;margin-top:4px}
+.gaucho-settings .text-input,.gaucho-settings select{width:100%;margin:0}
+.gaucho-settings .button{justify-self:start}
+@media(max-width:1100px){.gaucho-layout{grid-template-columns:1fr}.gaucho-message{max-width:100%}}
+.gaucho-tasks{display:grid;gap:12px}
+.gaucho-task-form{display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fafbf8}
+.gaucho-task-form h3{margin:0;font-size:14px}
+.gaucho-task-form>p{margin:0}
+.gaucho-task-form .text-input{width:100%;margin:0}
+.gaucho-task-form .button{justify-self:start}
+.gaucho-task{padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.gaucho-task-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.gaucho-badge.is-pending{background:#eef1eb;color:#4c5750}
+.gaucho-badge.is-done{background:#e6f2e4;color:#2f5a3a}
+.gaucho-badge.is-error{background:#f8e7e1;color:#8a3a1c}
+.gaucho-badge.is-task{background:#e7eef8;color:#284a73}
+.gaucho-error{margin:6px 0 0;font-size:13px;color:#8a3a1c}
+.gaucho-fix select{justify-self:start}
+.gaucho-dataset{display:grid;gap:12px}
+.gaucho-dataset-summary,.gaucho-finetune{display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:12px}
+.gaucho-dataset-summary h3,.gaucho-finetune h3,.gaucho-dataset-records h3{margin:0;font-size:14px}
+.gaucho-dataset-summary>p,.gaucho-finetune>p{margin:0}
+.gaucho-dataset-summary progress{width:100%;height:8px}
+.gaucho-dataset-summary .button,.gaucho-finetune .button{justify-self:start}
+.gaucho-chips{display:flex;flex-wrap:wrap;gap:6px}
+.gaucho-finetune .text-input{width:100%;margin:0}
+.gaucho-checks{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
+.gaucho-checks .is-ok{color:#2f5a3a}
+.gaucho-checks .is-fail{color:#8a3a1c}
+.gaucho-export{padding:12px;border-radius:10px;background:#f2f6ef;font-size:13px;overflow-wrap:anywhere}
+.gaucho-export p{margin:0 0 6px}
+.gaucho-dataset-records{display:grid;gap:8px}
+.gaucho-answer{margin:4px 0 0;font-size:13px;white-space:pre-wrap}
+.gaucho-include{display:flex;align-items:center;gap:6px;font-size:12px}
+.gaucho-badge.is-upload,.gaucho-badge.is-manual{background:#f1ecf8;color:#4d3a73}
+.gaucho-file{position:relative;justify-self:start;cursor:pointer}
+.gaucho-file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.gaucho-file:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.gaucho-field{display:grid;gap:12px}
+.gaucho-field-intro,.gaucho-field-viewer,.gaucho-field-curve{display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:12px}
+.gaucho-field-intro h3,.gaucho-field-curve h3{margin:0;font-size:14px}
+.gaucho-field-intro p,.gaucho-field-curve p{margin:0}
+.gaucho-field-stats{font-size:13px;font-weight:600}
+.gaucho-field-canvas{width:100%;height:auto;image-rendering:pixelated;border-radius:10px;border:1px solid var(--line);background:#e8f0df}
+.gaucho-field-caption{margin:0;font-variant-numeric:tabular-nums}
+.gaucho-field-course{font:13px/1.5 "Cascadia Mono",Consolas,monospace;letter-spacing:.04em}
+.gaucho-field-svg{width:100%;height:auto}
+.gaucho-field-svg .grid{stroke:#e3e6df;stroke-width:1}
+.gaucho-field-svg .curve{fill:none;stroke:#2f5a3a;stroke-width:2}
+.gaucho-field-svg text{font-size:11px;fill:#69726b}
+.gaucho-danger{border-color:#d9a08c;color:#8a3a1c;justify-self:start}
+.gaucho-tools{display:grid;gap:12px}
+.gaucho-tools>p{margin:0}
+.gaucho-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.gaucho-mode{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.gaucho-mode small{grid-column:2;font-size:12px}
+.gaucho-mode:has(input:checked){border-color:#253c2e;box-shadow:inset 0 0 0 1px #253c2e}
+.gaucho-review{display:grid;gap:8px;margin-top:8px;padding:12px;border:1px solid #d9c98c;border-radius:10px;background:#fffaf0}
+.gaucho-review h4{margin:0;font-size:14px}
+.gaucho-review>p{margin:0}
+.gaucho-badge.is-review{background:#fdf0cf;color:#6b4e0e}
+.gaucho-badge.is-blocked{background:#f8e7e1;color:#8a3a1c}

@@ -1,0 +1,104 @@
+/* Repaginada de hierarquia e legibilidade.
+   Camada carregada por último e escopada em body.ui-refresh: remover a classe restaura o visual anterior.
+   Escala: 12 legenda · 13 secundário/botões · 14 corpo · 16 apoio · 18 título de card · 24 seção · 32 página.
+   Espaçamento em base 4. Laranja reservado ao CTA e a indicadores; o resto é neutro com leve tom verde. */
+
+.ui-refresh{--muted:#5d6660;--subtle:#69726b;--chip:#eff2ec;line-height:1.5}
+
+/* Barra superior: contexto à esquerda, ações discretas à direita. */
+.ui-refresh .topbar{height:auto;min-height:64px}
+.ui-refresh .breadcrumb{font-size:13px;color:var(--muted)}
+.ui-refresh .breadcrumb strong{color:var(--ink);font-weight:600}
+.ui-refresh .topbar-actions{gap:4px;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.ui-refresh .topbar-actions .button{white-space:nowrap;font-size:13px;min-height:34px;padding:6px 12px;border-color:transparent;background:transparent;color:var(--ink);font-weight:560}
+.ui-refresh .topbar-actions .button:hover:not(:disabled){background:var(--chip)}
+.ui-refresh .topbar-actions .button:disabled{opacity:.42}
+.ui-refresh .status-pill{font-size:12px;color:var(--muted);padding:5px 10px;margin:0 6px;border-radius:999px;background:var(--chip)}
+.ui-refresh .status-pill.connected{color:#3d6838}
+
+/* Cabeçalho da página: título domina; versão e "100% local" viram metadados. */
+.ui-refresh .page-heading{align-items:flex-end;margin:0 0 32px}
+.ui-refresh .eyebrow{font-size:12px;letter-spacing:.08em;color:var(--subtle)}
+.ui-refresh h1{font-size:32px;line-height:1.15;letter-spacing:-.02em;margin:8px 0}
+.ui-refresh .page-heading p{font-size:16px;line-height:1.5;color:var(--muted);max-width:68ch}
+.ui-refresh .copy-badge{gap:8px;padding:6px 12px;border-color:transparent;border-radius:999px;background:var(--chip);font-size:12px;color:var(--muted)}
+.ui-refresh .copy-badge>span{font-size:14px}
+.ui-refresh .copy-badge strong{display:inline;margin:0 0 0 4px;font-size:12px;color:#3d6838}
+
+/* Lateral. */
+.ui-refresh .workspace-label{font-size:12px;letter-spacing:.08em;color:var(--subtle)}
+.ui-refresh .nav-button{font-size:14px}
+.ui-refresh .nav-button:not(.active):not(.nav-create){color:#4c5750}
+.ui-refresh .nav-count{font-size:12px}
+.ui-refresh .sidebar-protection p{font-size:13px;line-height:1.45;color:var(--muted)}
+.ui-refresh .protection-label,.ui-refresh .workspace-footer,.ui-refresh .workspace-footer span{font-size:12px;letter-spacing:.04em}
+
+/* Abas e botões: mínimo de 13px. */
+.ui-refresh .section-tab,.ui-refresh .section-tabs .button{font-size:14px}
+.ui-refresh .button{font-size:13px}
+
+/* Campos e metadados de listas. */
+.ui-refresh .text-input,.ui-refresh select{font-size:13px;color:var(--ink)}
+.ui-refresh .text-input::placeholder{color:var(--subtle)}
+.ui-refresh kbd{font-size:11px}
+.ui-refresh .panel-heading p{font-size:13px;color:var(--muted)}
+.ui-refresh .count-badge,.ui-refresh .subtle-label,.ui-refresh .list-context,.ui-refresh .list-context>span:last-child,.ui-refresh .pagination,.ui-refresh .tutorial-count{font-size:12px;color:var(--subtle)}
+.ui-refresh .section-tab span{font-size:12px}
+.ui-refresh .catalog-note p,.ui-refresh .planner-help{font-size:13px;line-height:1.6;color:var(--muted)}
+
+/* Cards. */
+.ui-refresh .world-card h3{font-size:18px;line-height:1.3;letter-spacing:-.01em}
+.ui-refresh .world-card p.muted,.ui-refresh p.muted{font-size:13px;line-height:1.5;color:var(--muted)}
+.ui-refresh .brain-hub-card>h3+p.muted{font:12px/1.45 "Cascadia Mono",Consolas,monospace;color:var(--subtle);overflow-wrap:anywhere}
+.ui-refresh .product-phase-list li{font-size:13px}
+.ui-refresh .product-overview progress{-webkit-appearance:none;appearance:none;height:8px;border:0;border-radius:999px;background:#e8ebe4;overflow:hidden}
+.ui-refresh .product-overview progress::-webkit-progress-bar{background:#e8ebe4;border-radius:999px}
+.ui-refresh .product-overview progress::-webkit-progress-value{background:var(--accent);border-radius:999px}
+
+/* Catálogo: o número é o primário; o acento sai do primeiro card. */
+.ui-refresh .metric.accent{background:var(--paper);border-color:var(--line);color:var(--ink);box-shadow:inset 0 3px 0 var(--accent)}
+.ui-refresh .metric-label{font-size:13px}
+.ui-refresh .metric small{font-size:12px;color:var(--muted)}
+.ui-refresh .kind-badge,.ui-refresh .function-category,.ui-refresh .row-action{font-size:12px}
+.ui-refresh .function-description{font-size:13px;color:var(--muted)}
+
+/* Cérebro, Escritório, Tutoriais. */
+.ui-refresh .brain-file strong{font-size:14px}
+.ui-refresh .brain-file small{font-size:12px;color:var(--muted)}
+.ui-refresh .markdown-body pre{font-size:13px}
+.ui-refresh .office-state,.ui-refresh .office-desk small,.ui-refresh .tutorial-category{font-size:12px}
+
+/* Planejador: os três seletores lado a lado; notas como texto de apoio. */
+.ui-refresh .qwen-heading h2{font-size:24px;letter-spacing:-.015em}
+.ui-refresh .planner-eyebrow{font-size:12px;letter-spacing:.08em}
+.ui-refresh .planner-local-badge,.ui-refresh .planner-suggestions button{font-size:13px}
+.ui-refresh .field-label{font-size:13px;font-weight:600;color:var(--ink)}
+.ui-refresh .qwen-note{font-size:13px;line-height:1.5;color:var(--muted)}
+.ui-refresh .cloud-selection>label,.ui-refresh .cloud-selection>select{margin:0}
+.ui-refresh .cloud-selection>select{width:100%}
+.ui-refresh .cloud-selection>p{margin:4px 0 0}
+@media(min-width:951px){
+  .ui-refresh .cloud-selection{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;row-gap:6px;align-items:end}
+  .ui-refresh .cloud-selection>label{grid-row:1}
+  .ui-refresh .cloud-selection>select{grid-row:2}
+  .ui-refresh .cloud-selection>label:nth-of-type(1),.ui-refresh .cloud-selection>select:nth-of-type(1){grid-column:1}
+  .ui-refresh .cloud-selection>label:nth-of-type(2),.ui-refresh .cloud-selection>select:nth-of-type(2){grid-column:2}
+  .ui-refresh .cloud-selection>label:nth-of-type(3),.ui-refresh .cloud-selection>select:nth-of-type(3){grid-column:3}
+  .ui-refresh .cloud-selection>:not(label):not(select){grid-column:1/-1}
+}
+.ui-refresh #planner-account-quotas:not([hidden]){display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:4px 0 12px}
+.ui-refresh .cloud-quota{margin:0;padding:16px}
+.ui-refresh #qwen-metrics{font-size:12px}
+.ui-refresh .brain-style-label span,.ui-refresh .brain-speed-label span,.ui-refresh .brain-style-saved,.ui-refresh .brain-3d-name,.ui-refresh .brain-3d-hint{font-size:12px}
+
+/* Barra de tarefas: memória só importa no planejador local; fora dele, a barra não cobre o conteúdo. */
+.ui-refresh:not([data-current-view="planner"]) .memory-section{display:none}
+.ui-refresh .task-bar strong{font-size:14px}
+.ui-refresh .task-bar small,.ui-refresh .memory-note,.ui-refresh .memory-card small{font-size:12px}
+.ui-refresh .memory-heading strong,.ui-refresh .memory-value{font-size:13px}
+
+@media(max-width:950px){
+  .ui-refresh h1{font-size:28px}
+  /* A lateral recolhida esconde os rótulos com font-size:0; mantém só os ícones. */
+  .ui-refresh .nav-button{font-size:0}
+}

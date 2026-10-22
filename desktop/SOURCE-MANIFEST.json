@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "createdAt": "2026-10-22T14:40:36.696Z",
+  "createdAt": "2026-10-22T20:50:59.436Z",
   "kind": "source-overlay",
   "files": [
     {
@@ -10,8 +10,8 @@
     },
     {
       "path": "desktop/CLAUDE.md",
-      "bytes": 5821,
-      "sha256": "b880289872aa01e4134225f1763ddaafc256ff8451044bf765d131968622bebb"
+      "bytes": 11782,
+      "sha256": "35537986edbe6aa07cebd43e2d752a242faa71254ca424adcf902eaebc754f86"
     },
     {
       "path": "desktop/docs/SANDUBAH-AIRLLM.md",
@@ -205,8 +205,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/app.mjs",
-      "bytes": 24016,
-      "sha256": "c38e06b57a561a69e0f1ea150128e87ea671410973663fc03499261b7f88cf4d"
+      "bytes": 25133,
+      "sha256": "e54419cea97b141f90a45f2f9a15b104edf39a7747ab1b80c8526cb3bbc9afeb"
     },
     {
       "path": "desktop/src/sandubah-desktop/assets/office/gaucho-activities.png",
@@ -235,8 +235,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/backend.cjs",
-      "bytes": 52717,
-      "sha256": "2853f69823646a46057b11a40641e4c78592ea36db9b47c7e4be18027c337fdd"
+      "bytes": 61759,
+      "sha256": "6f32209c2040c558c3da5f7256a3ed62f4b3bc1504c0de9fca3decf56f38acf1"
     },
     {
       "path": "desktop/src/sandubah-desktop/brain-3d.css",
@@ -270,13 +270,13 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/cloud-planner.cjs",
-      "bytes": 21202,
-      "sha256": "8e5b08f13b42bc65b759ed4851dd252051d8e60f517d8f3fcd7a6a401cda83e3"
+      "bytes": 21382,
+      "sha256": "6fab6a47fb648af907a0849b000528ab2854aab4ddaa406b6b33c5e56a698a8d"
     },
     {
       "path": "desktop/src/sandubah-desktop/codex-worker.cjs",
-      "bytes": 8299,
-      "sha256": "aa5984f250d2fff233898423b043401351fe301bb35e57627d3963455c5bfe10"
+      "bytes": 8444,
+      "sha256": "c6af2bd5946f2d080437dc3bd352d3eff660a8b08d59b55d6e16155c6524867c"
     },
     {
       "path": "desktop/src/sandubah-desktop/completion.cjs",
@@ -309,14 +309,49 @@
       "sha256": "a6766377d663133f452aecded77f6b14da72816d1674d7dc45bd500f284cf6a8"
     },
     {
+      "path": "desktop/src/sandubah-desktop/gaucho-dataset.cjs",
+      "bytes": 8329,
+      "sha256": "643c2369454f6b6f80f3bc0db0066e19db03cba6418a03f5bb161f562c32c741"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho-field.cjs",
+      "bytes": 6934,
+      "sha256": "f70e0433ba59e58a72b74c24d011d85d0561b18201b89476eaccabdae679c0e4"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho-field.mjs",
+      "bytes": 9758,
+      "sha256": "1f73fa1336b689af3df944cf8ca48b96ca02ebdd656497d8c1aa2b0fa504398f"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho-tools.cjs",
+      "bytes": 6680,
+      "sha256": "31a018f59a483633b4d828d6fc7f3d5118c1f92b580cb3ce95c4fe1aabddda06"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho.cjs",
+      "bytes": 31484,
+      "sha256": "f6cf6ae83c9facfc8704bdae77a0f7e41a7a935d67ccb1656950a3beb94df776"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho.css",
+      "bytes": 7177,
+      "sha256": "d73390ef984d73253a578c86142a8094d8667e87bdd255662d93528bd4a699a4"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/gaucho.mjs",
+      "bytes": 34897,
+      "sha256": "8a38b09d530aa32e3199932e523b2bb8a617c37bf4ee525d01604459b4e0c6db"
+    },
+    {
       "path": "desktop/src/sandubah-desktop/harness-executors.mjs",
       "bytes": 1373,
       "sha256": "c6bb69271cbec23614933c8debc064d06b9d4ecf8445c9f53e3ac7ef9cead748"
     },
     {
       "path": "desktop/src/sandubah-desktop/index.html",
-      "bytes": 19264,
-      "sha256": "bdae1282dc19e454653212af745f7bfcb1d05454dcfd837945a7b9515eea17e8"
+      "bytes": 19608,
+      "sha256": "b6ac3f215660526ee36a5f6863056225e67de8880ab851465cf100ce0e7725a0"
     },
     {
       "path": "desktop/src/sandubah-desktop/interview.mjs",
@@ -325,8 +360,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/knowledge.cjs",
-      "bytes": 32125,
-      "sha256": "d503969e27704e10c02b86d594795688543759893b26866997cf27cb8b89798b"
+      "bytes": 34970,
+      "sha256": "7800e1190b8b587592c96b6869638c2033d8ba604bd7797fe23e6906f11d081b"
     },
     {
       "path": "desktop/src/sandubah-desktop/legal-reference.cjs",
@@ -335,8 +370,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/main.cjs",
-      "bytes": 27873,
-      "sha256": "1b70d3f6838878bf6f1ac6d754a2dee81540ced1dac3377b5e165ad0be7a9652"
+      "bytes": 34832,
+      "sha256": "cb53e9bfbe82fbf3412377f9b541afef8aae47d8d247c884d568afae6a9c2b08"
     },
     {
       "path": "desktop/src/sandubah-desktop/media-ui.mjs",
@@ -440,8 +475,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/planning-review.cjs",
-      "bytes": 2932,
-      "sha256": "edc10e912bdd33aad85fbeb16af2d7689cac277b4ae5154f3906e96e8797de0c"
+      "bytes": 5787,
+      "sha256": "87d9b4c2ff2262430902e2c5d21c490e24d9c2fcf5c10592b946479e407fa11d"
     },
     {
       "path": "desktop/src/sandubah-desktop/planning-review.css",
@@ -450,13 +485,13 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/planning-review.mjs",
-      "bytes": 4770,
-      "sha256": "c8c4849fbe6ecc5c02ffe14ec81cd21068326273a905c86f81a9de631cad9baa"
+      "bytes": 4810,
+      "sha256": "a5587dd70d8a2d1f0fb1242959f3aceb359e44a9e585214ff1c250fadae9549d"
     },
     {
       "path": "desktop/src/sandubah-desktop/preload.cjs",
-      "bytes": 3873,
-      "sha256": "db364879c5120a1b7b0e5f9cf88bc6dec617797b2b5b3fe20f8d5ca0955e6343"
+      "bytes": 4158,
+      "sha256": "264186ce9e41aef09ffc45f4863f7c26699953a6a6a3b509061b771754ca3630"
     },
     {
       "path": "desktop/src/sandubah-desktop/preview-data.cjs",
@@ -484,14 +519,44 @@
       "sha256": "71e4d3b7a6179832599b27a81046096169975d1e6df78e493ee5f2292e660ac6"
     },
     {
+      "path": "desktop/src/sandubah-desktop/project-history.cjs",
+      "bytes": 12696,
+      "sha256": "c6fe87f3b5afd42e45c09f5e3e1f096bfa70bf86c4a954d4dd687a73c80348fb"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/project-history.mjs",
+      "bytes": 8283,
+      "sha256": "3c74a90ee46eec07d42cfacdde3a213951b739ec41bceefff92a85dbd7547a16"
+    },
+    {
       "path": "desktop/src/sandubah-desktop/project-preview.cjs",
       "bytes": 2856,
       "sha256": "12b1b09a35d7d26a6374c2ca62bb3ff7ffb597c304acd3eb74a7b8afac016009"
     },
     {
+      "path": "desktop/src/sandubah-desktop/project-track.cjs",
+      "bytes": 4028,
+      "sha256": "899774319b93b93bde0ccd80427195c5bb4c659e1bf3e5959143e1f8cc7277b7"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/project-track.css",
+      "bytes": 4563,
+      "sha256": "92f87488b380a8dea5cbeee58ab0c824674495e763b519fcc2d925d76b6abf94"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/project-track.mjs",
+      "bytes": 4556,
+      "sha256": "d07c476ad5b9a53ea0150c000d0612c53bbb22bb4d6cd6c47177471a2c8e4fa2"
+    },
+    {
       "path": "desktop/src/sandubah-desktop/qwen-planner.cjs",
       "bytes": 8553,
       "sha256": "64eb6dfa39c77308b4c65c9da0f5da56d7d2ab8bc49e74f220c452f8f4d1379b"
+    },
+    {
+      "path": "desktop/src/sandubah-desktop/refresh.css",
+      "bytes": 7081,
+      "sha256": "ae9fa413dba29bcc57e1a6a89970a68507a83c1c209ec5b6836ca6c2b279f0bb"
     },
     {
       "path": "desktop/src/sandubah-desktop/release-notes.cjs",
@@ -565,8 +630,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/workspace.cjs",
-      "bytes": 21402,
-      "sha256": "19b7e28e526644d54882f51c9cbc5b6c719ca011990a7790e84a404561e81d77"
+      "bytes": 26942,
+      "sha256": "32d98ac55b26665b67ad737d016b58bbb6d160eb91aaaf44448f9ad9b9220931"
     },
     {
       "path": "desktop/src/sandubah-desktop/world.css",
@@ -575,8 +640,8 @@
     },
     {
       "path": "desktop/src/sandubah-desktop/world.mjs",
-      "bytes": 45800,
-      "sha256": "97548772d7ff8a13d1687c04e07337e2c576fe52e70d155824f93b2cb775f66f"
+      "bytes": 48673,
+      "sha256": "27089eb59b167554ffbe549d10f7a48dc70e9c957a7ce442b353fcf78b9e1055"
     },
     {
       "path": "desktop/src/sandubah-distribution/bootstrap.cjs",
@@ -680,8 +745,8 @@
     },
     {
       "path": "desktop/src/sandubah-public-preview/README.md",
-      "bytes": 8427,
-      "sha256": "692681782b607d37a8aee24bf682977f45cf894ed42f74fdd2312105d9281e17"
+      "bytes": 8693,
+      "sha256": "4cb2b64f1784cfed60214cd07860bc4b7cd390ccb2847f18583561f4845a31ca"
     },
     {
       "path": "desktop/src/sandubah-public-preview/SECURITY.md",
@@ -734,9 +799,24 @@
       "sha256": "40cb886d30787ca154e9bdeb8a8e61ab957686a87f75e0771d79774c38be4f61"
     },
     {
+      "path": "desktop/tests/regression/sandubah-gaucho-field.test.cjs",
+      "bytes": 7569,
+      "sha256": "3df58391b806fb29c1be3e53dccec47fea79a9a59887f635633a96c72ce6b894"
+    },
+    {
+      "path": "desktop/tests/regression/sandubah-gaucho-tools.test.cjs",
+      "bytes": 11192,
+      "sha256": "d547fb154a4fcbbed6deb62b4f82da5881c7600f3e089b03082569b322ca41a2"
+    },
+    {
+      "path": "desktop/tests/regression/sandubah-gaucho.test.cjs",
+      "bytes": 22040,
+      "sha256": "9716d067476c615a2de6a999e5672aeafb64af6f7cff71e447e39f18d878aed5"
+    },
+    {
       "path": "desktop/tests/regression/sandubah-gui.test.cjs",
-      "bytes": 10282,
-      "sha256": "be43aeecf8252510c7fa75d0e1b1e55f31b8faba3a412b70b9355f57c63b3919"
+      "bytes": 10469,
+      "sha256": "3034c7b9e3bb60d06d5545359d45f85de4fc6da85a2a2839efb212901fa0787d"
     },
     {
       "path": "desktop/tests/regression/sandubah-harness-options.test.cjs",
@@ -804,6 +884,16 @@
       "sha256": "fdd551d5900e48637882709b5d6dcf86aa29c2c4ff2d262c7b9a2ae71abf460d"
     },
     {
+      "path": "desktop/tests/regression/sandubah-project-history.test.cjs",
+      "bytes": 12734,
+      "sha256": "55b9b932e7e65497f55bf6060a37b05bf86f4f5016b7c183795be266f9524327"
+    },
+    {
+      "path": "desktop/tests/regression/sandubah-project-track.test.cjs",
+      "bytes": 6517,
+      "sha256": "b980b1a1122cd920c05c71f6c2448a91a19036a473451ebd0a83e4708008cd55"
+    },
+    {
       "path": "desktop/tests/regression/sandubah-qwen.test.cjs",
       "bytes": 8935,
       "sha256": "e958479dc587cac15bd7d0fb86dabbbb8a743a49ac2e4fe2e771032ecdac677f"
@@ -845,8 +935,8 @@
     },
     {
       "path": "desktop/tests/regression/sandubah-world.test.cjs",
-      "bytes": 17028,
-      "sha256": "92e9a97ab77f96e4edc6f9a49bfe55a632ca40e0c639e17ca092ca9f278ad5b6"
+      "bytes": 20261,
+      "sha256": "436bbab7c9a75166155854970042370b8889ba93b63e314895f10587642b0c40"
     },
     {
       "path": "desktop/tests/regression/test_sandubah_config.py",

@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('sandubah',Object.freeze({
   knowledge:payload=>invoke('sandubah:knowledge',payload),
   project:payload=>invoke('sandubah:project',payload),runProject:payload=>invoke('sandubah:run-project',payload),stopQueue:()=>invoke('sandubah:stop-queue'),handoff:id=>invoke('sandubah:handoff',{id}),
   onProject:listener=>subscribe('sandubah:project-state',listener),
-  interruptWorker:()=>invoke('sandubah:interrupt-worker'),artifacts:id=>invoke('sandubah:artifacts',{id}),artifact:payload=>invoke('sandubah:artifact',payload),applyArtifact:payload=>invoke('sandubah:apply-artifact',payload),
+  interruptWorker:()=>invoke('sandubah:interrupt-worker'),artifacts:id=>invoke('sandubah:artifacts',{id}),artifact:payload=>invoke('sandubah:artifact',payload),applyArtifact:payload=>invoke('sandubah:apply-artifact',payload),checkpoints:id=>invoke('sandubah:checkpoints',{id}),checkpoint:payload=>invoke('sandubah:checkpoint',payload),restoreCheckpoint:payload=>invoke('sandubah:restore-checkpoint',payload),history:payload=>invoke('sandubah:history',payload),gaucho:payload=>invoke('sandubah:gaucho',payload),
   onWorker:listener=>subscribe('sandubah:worker',listener),
   plannerStatus:()=>invoke('sandubah:planner-status'),plannerChat:payload=>invoke('sandubah:planner-chat',payload),
   plannerContext:payload=>invoke('sandubah:planner-context',payload),

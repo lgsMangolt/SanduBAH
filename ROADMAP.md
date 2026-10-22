@@ -11,7 +11,12 @@ O que ainda não está pronto. Os itens saem do backlog em [desktop/CLAUDE.md](d
 
 ## Funcionalidades
 
-- [ ] **Checkpoints por missão:** diff e restauração confirmada, sem sobrescrever mudanças externas.
+- [x] **Trilha do projeto:** prompt enxuto, Grill-me, prompt refinado, rascunho e protótipos (nos fontes).
+- [x] **Histórico de versões** com git local e **envio ao GitHub** com confirmação (nos fontes).
+- [x] **Checkpoints por aplicação de arquivo,** com diff e restauração confirmada (nos fontes).
+- [ ] **Checkpoints por missão:** agrupar os arquivos de uma missão e restaurar vários de uma vez.
+- [x] **Gauchinhos:** conversa e correção, tarefas, dataset, campo de treino e ferramentas supervisionadas (nos fontes).
+- [ ] **Gauchinhos:** treino LoRA local quando houver GPU compatível e ferramentas MCP do Ruflo com as mesmas regras de supervisão.
 - [ ] **Skills sob demanda:** metadados e carregamento progressivo, com escopos Central, projeto e papel.
 - [ ] **Gates de qualidade:** verificações determinísticas com evidências de testes e artefatos, sem depender só da autoavaliação do modelo.
 - [ ] **Templates de equipe:** contratos de entrega, dependências e handoff real entre etapas, em execução serial.

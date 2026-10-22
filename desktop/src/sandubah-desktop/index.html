@@ -19,10 +19,13 @@
   <link rel="stylesheet" href="updates.css">
   <link rel="stylesheet" href="whats-new.css">
   <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="project-track.css">
+  <link rel="stylesheet" href="gaucho.css">
+  <link rel="stylesheet" href="refresh.css">
   <link rel="icon" href="sandubah-logo.png">
   <script type="module" src="app.mjs"></script>
 </head>
-<body>
+<body class="ui-refresh">
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="#inicio" aria-label="SanduBAH, início"><img class="sandubah-logo" src="sandubah-logo.png" alt="Sanduíche de pão cacetinho em pixel art"><span>SanduBAH</span></a>
@@ -33,6 +36,7 @@
         <button class="nav-button active" data-view="all"><span class="nav-icon">▦</span>Catálogo<span class="nav-indicator"></span></button>
         <button class="nav-button" data-view="brain"><span class="nav-icon">◉</span>Cérebro</button>
         <button class="nav-button" data-view="office"><span class="nav-icon">▥</span>Escritório</button>
+        <button class="nav-button" data-view="gauchos"><span class="nav-icon">☺</span>Gauchinhos</button>
         <button class="nav-button" data-view="tutorials"><span class="nav-icon">▤</span>Tutoriais</button>
         <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span>Configurações</button>
       </nav>
@@ -97,6 +101,7 @@
         </section>
         <section id="office-view" hidden></section>
         <section id="tutorials-view" aria-label="Tutoriais do SanduBAH" hidden></section>
+        <section id="gauchos-view" aria-label="Gauchinhos" hidden></section>
         <nav id="settings-tabs" class="section-tabs" aria-label="Abas de configurações" hidden><button class="section-tab" data-view="connections">Conexões</button><button class="section-tab" data-view="development">Compilar e testar</button><button class="section-tab" data-view="activity">Atividade da sessão</button></nav>
         <section id="connections-view" hidden></section>
         <section id="development-view" class="development-view" hidden><div class="development-card"><span class="feature-icon">⌥</span><h2>Seu código. Seu próximo build.</h2><p>Compile a CLI diretamente com o TypeScript instalado nesta cópia. Sem npm global, sem baixar o Ruflo original.</p><code id="repository-path"></code><button id="build-cli" class="button primary">Compilar CLI local <span>→</span></button></div><div class="development-card"><span class="feature-icon">✓</span><h2>Teste com um worker.</h2><p>Escolha um arquivo da suíte local. Sem paralelismo de arquivos; o painel impede uma segunda execução simultânea.</p><label class="field-label" for="test-file-search">Encontrar arquivo</label><input id="test-file-search" class="text-input" placeholder="Ex.: parser.test.ts"><label class="field-label" for="test-file-select">Arquivo de testes</label><select id="test-file-select"></select><button id="run-test" class="button primary">Executar teste selecionado <span>→</span></button></div></section>

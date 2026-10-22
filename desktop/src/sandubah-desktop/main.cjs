@@ -10,15 +10,18 @@ const {APP_ID,TOAST_CLSID,configureIdentity}=require('./desktop-identity.cjs');
 const {createTaskbarBadge}=require('./taskbar-badge.cjs');
 const { modelById } = require('./model-catalog.cjs');
 const { reviewLimit } = require('./context-limits.cjs');
-const { PlanningReview, planningReview, executionReview } = require('./planning-review.cjs');
-const { existsSync, readFileSync, readdirSync, lstatSync } = require('node:fs');
+const { PlanningReview, planningReview, executionReview, gauchoReview, gauchoTaskReview, gauchoToolsReview } = require('./planning-review.cjs');
+const { GauchoLibrary } = require('./gaucho.cjs');
+const { readiness, MODELS } = require('./gaucho-dataset.cjs');
+const fieldEngine = require('./gaucho-field.cjs');
+const { existsSync, readFileSync, readdirSync, lstatSync, mkdirSync } = require('node:fs');
 const { spawn } = require('node:child_process');
 const { join, resolve } = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { homedir } = require('node:os');
 const { PersonalLibrary } = require('./personal-library.cjs');
 const { DesktopUpdates } = require('./desktop-updates.cjs');
-const { KnowledgeLibrary } = require('./knowledge.cjs');
+const { KnowledgeLibrary, secretPattern } = require('./knowledge.cjs');
 const { LegalReference } = require('./legal-reference.cjs');
 const { DesktopController, createValidator, assertLocalWriteTree, redact } = require('./backend.cjs');
 
@@ -74,11 +77,14 @@ async function nativeConfirmation(request) {
   const parameters=JSON.stringify(redact(request.arguments),null,2);
   if(parameters.length>reviewLimit(request))throw new Error(`A revisão excede ${reviewLimit(request).toLocaleString('pt-BR')} caracteres. Reduza o escopo; nada será cortado.`);
   if(request.entry.kind==='cloud-planning')return planningReviews.ask(planningReview({...request,arguments:redact(request.arguments)},parameters));
+  if(request.entry.kind==='gaucho-chat')return planningReviews.ask(gauchoReview({...request,arguments:redact(request.arguments)},parameters));
+  if(request.entry.kind==='gaucho-task')return planningReviews.ask(gauchoTaskReview({...request,arguments:redact(request.arguments)},parameters));
+  if(request.entry.kind==='gaucho-tools')return planningReviews.ask(gauchoToolsReview({...request,arguments:redact(request.arguments)},parameters));
   if(request.entry.kind==='harness'&&request.arguments.missions?.length&&request.arguments.missions.every(mission=>mission.executor?.startsWith('Codex instalado')))return planningReviews.ask(executionReview({...request,arguments:redact(request.arguments)},parameters));
   const response=await dialog.showMessageBox(mainWindow,{
     type:'warning',title:'Revisar execução local — SanduBAH',
     message:`Executar ${request.entry.name}?`,
-    detail:`Projeto: ${request.project}\n\n${request.entry.kind==='development'?'Build/teste da cópia local, com um worker.':request.entry.kind==='harness'?'A fila registra os agentes e executa as ferramentas listadas, em ordem. Para no primeiro erro.':'A ferramenta pode criar, atualizar ou excluir dados deste projeto privado.'} Nenhuma chamada será repetida automaticamente.\n\nParâmetros:\n${parameters}`,
+    detail:`Projeto: ${request.project}\n\n${request.entry.kind==='development'?'Build/teste da cópia local, com um worker.':request.entry.kind==='harness'?'A fila registra os agentes e executa as ferramentas listadas, em ordem. Para no primeiro erro.':request.entry.kind==='checkpoint'?'Restaura o arquivo da cópia ao conteúdo anterior à aplicação. O conteúdo atual é salvo antes em um backup de segurança; se o arquivo mudou fora do SanduBAH, nada é sobrescrito.':request.entry.kind==='version-restore'?'Os arquivos do workspace voltam ao estado desta versão, e os criados depois dela são removidos. Tudo continua no histórico: salve uma nova versão para registrar a volta ou restaure a mais recente para desfazer.':request.entry.kind==='gaucho-apply'?'Copia para a pasta do gauchinho os arquivos listados, criados ou alterados no ensaio, e remove os marcados como removidos. Só a pasta dele é tocada.':request.entry.kind==='github-push'?`${request.entry.visibility==='public'?'ATENÇÃO: este repositório é público. ':''}Envia as versões listadas para o GitHub com o seu login do git. Quem tiver acesso ao repositório verá todos os arquivos dessas versões. Só vai o conteúdo do workspace, nunca os arquivos internos do harness. Nada é sobrescrito no GitHub.`:'A ferramenta pode criar, atualizar ou excluir dados deste projeto privado.'} Nenhuma chamada será repetida automaticamente.\n\nParâmetros:\n${parameters}`,
     buttons:['Cancelar','Executar uma vez'],defaultId:0,cancelId:0,noLink:true,
   });
   return response.response===1;
@@ -91,6 +97,7 @@ function createWindow() {
   controller.projects.knowledgeLibrary=controller.knowledge;
   controller.legal=new LegalReference({directory:join(buildRoot,hidden?'test-profile/brain/legal-cache':'brain/legal-cache'),guard:path=>controller.projects.guard(path),write:(path,content)=>controller.projects.write(path,content)});
   controller.knowledge.legal=controller.legal;
+  controller.gauchos=new GauchoLibrary({directory:join(buildRoot,hidden?'test-profile/gauchos':'gauchos'),guard:path=>assertLocalWriteTree(repositoryRoot,path),write:(path,content)=>controller.projects.write(path,content),secretPattern});
   controller.media=new MediaLibrary({root:repositoryRoot,directory:join(buildRoot,hidden?'test-profile/media':'media'),guard:path=>assertLocalWriteTree(repositoryRoot,path),write:(path,content)=>controller.projects.write(path,content)});
   const previews=new ProjectPreview(controller.projects);
   const previewData=new PreviewData(controller.projects);
@@ -178,8 +185,11 @@ function createWindow() {
     if(action==='refresh'){if(controller.active)throw new Error('Aguarde o worker antes da varredura.');return controller.knowledge.refresh();}
     if(action==='recommend')return controller.knowledge.recommendations(payload.id);
     if(action==='lifecycle')return controller.knowledge.lifecycle(payload.id);
+    if(action==='track')return controller.knowledge.track(payload.id);
     if(action==='open'){const project=controller.knowledge.project(payload.id);controller.knowledge.safe(project.directory,project.directory);if(!lstatSync(project.directory).isDirectory())throw new Error('A pasta do projeto não está disponível.');const error=await shell.openPath(project.directory);if(error)throw new Error(error);return {opened:true};}
     if(controller.active)throw new Error('Aguarde o worker antes de alterar o cérebro.');
+    if(action==='refine-prompt')return controller.knowledge.refinePrompt({id:payload.id,version:payload.version});
+    if(action==='prepare-draft')return controller.knowledge.prepareDraft(payload.id);
     if(action==='lifecycle-update')return controller.knowledge.updateLifecycle(payload.id,payload.input);
     if(action==='fine-tuning-save')return controller.knowledge.saveFineTuning(payload.projectId,payload.input);
     if(action==='fine-tuning-study'){const result=controller.knowledge.prepareFineTuning(payload.projectId);controller.media.copyScope('fine-tuning:'+(payload.projectId||'general'),'project:'+result.harnessId);return result;}
@@ -212,6 +222,50 @@ function createWindow() {
   handle('sandubah:artifacts',payload=>controller.projects.artifacts(payload.id));
   handle('sandubah:artifact',payload=>controller.projects.artifact(payload.id,payload.path));
   handle('sandubah:apply-artifact',payload=>controller.applyArtifact(payload));
+  handle('sandubah:checkpoints',payload=>controller.projects.checkpoints(payload.id));
+  handle('sandubah:checkpoint',payload=>controller.projects.checkpoint(payload.id,payload.checkpointId));
+  handle('sandubah:restore-checkpoint',payload=>controller.restoreCheckpoint(payload));
+  handle('sandubah:history',payload=>controller.historyAction(payload));
+  handle('sandubah:gaucho',async payload=>{
+    const action=payload?.action,gauchos=controller.gauchos;
+    if(action==='list')return gauchos.list();
+    if(action==='get')return gauchos.get(payload.id);
+    if(action==='sources'){const query=String(payload.query||'').toLowerCase().slice(0,200);return controller.projects.index().filter(item=>!query||`${item.title} ${item.path}`.toLowerCase().includes(query)).slice(0,50).map(({path,title,category})=>({path,title,category}));}
+    if(action==='chat')return controller.chatGaucho(payload);
+    if(action==='task-run')return controller.runGauchoTask(payload);
+    if(action==='task-create')return gauchos.createTask(payload.id,payload.input);
+    if(action==='task-evaluate')return gauchos.evaluateTask(payload.id,payload.input);
+    if(action==='task-delete')return gauchos.deleteTask(payload.id,payload.input);
+    if(action==='dataset-sync')return gauchos.syncDataset(payload.id);
+    if(action==='dataset-add')return gauchos.addPair(payload.id,payload.input);
+    if(action==='dataset-import')return gauchos.importPairs(payload.id,payload.input);
+    if(action==='dataset-set')return gauchos.setRecord(payload.id,payload.input);
+    if(action==='dataset-delete')return gauchos.deleteRecord(payload.id,payload.input);
+    if(action==='dataset-readiness'){const records=gauchos.datasetRecords(payload.id);return {...readiness({memory:await controller.memory.status(),records,model:payload.model}),models:MODELS};}
+    if(action==='dataset-export')return gauchos.exportDataset(payload.id,{model:payload.model,memory:await controller.memory.status()});
+    if(action==='permissions-set'){if(payload.input?.skills)for(const id of payload.input.skills){const entry=controller.getCatalog().entries.find(item=>item.id===id);if(entry?.kind!=='skill')throw new Error('Skill fora do catálogo local.');}return gauchos.setPermissions(payload.id,payload.input);}
+    if(action==='skills-search'){const query=String(payload.query||'').toLowerCase().slice(0,200);return controller.getCatalog().entries.filter(entry=>entry.kind==='skill'&&(!query||`${entry.name} ${entry.description}`.toLowerCase().includes(query))).slice(0,30).map(({id,name,description})=>({id,name,description:String(description||'').slice(0,200)}));}
+    if(action==='task-apply')return controller.applyGauchoRun(payload);
+    if(action==='task-discard')return gauchos.discardToolRun(payload.id,payload.taskId);
+    if(action==='workspace-open'){const directory=gauchos.workspaceDir(payload.id);mkdirSync(directory,{recursive:true});const error=await shell.openPath(directory);if(error)throw new Error(error);return {opened:true};}
+    if(action==='field-presets')return {presets:fieldEngine.PRESETS,limits:fieldEngine.LIMITS,tiles:fieldEngine.TILES};
+    if(action==='field-replay')return gauchos.fieldReplay(payload.id);
+    if(action==='field-train')return controller.trainGauchoField(payload);
+    if(action==='field-reset'){if(controller.active)throw new Error('Aguarde o treino atual terminar.');return gauchos.resetField(payload.id);}
+    if(action==='dataset-open'){const directory=join(gauchos.folder(payload.id),'dataset');if(!existsSync(directory))throw new Error('Exporte o dataset antes de abrir a pasta.');const error=await shell.openPath(directory);if(error)throw new Error(error);return {opened:true};}
+    if(action==='create')return gauchos.create(payload.input);
+    if(action==='update')return gauchos.update(payload.id,payload.input);
+    if(action==='rate')return gauchos.rate(payload.id,payload.input);
+    if(action==='lesson-edit')return gauchos.editLesson(payload.id,payload.input);
+    if(action==='lesson-delete')return gauchos.deleteLesson(payload.id,payload.input);
+    if(action==='remove-document')return gauchos.removeDocument(payload.id,payload.input);
+    if(action==='import'){
+      if(!Array.isArray(payload.paths)||!payload.paths.length||payload.paths.length>20)throw new Error('Escolha de 1 a 20 documentos do Cérebro.');
+      const titles=new Map(controller.projects.index().map(item=>[item.path,item.title]));
+      return gauchos.importDocuments(payload.id,payload.paths.map(path=>{if(!titles.has(path))throw new Error('Documento fora do Cérebro local.');return {source:path,title:titles.get(path),content:controller.projects.document(path).content};}));
+    }
+    throw new Error('Ação do gauchinho inválida.');
+  });
   handle('sandubah:handoff',async payload=>{
     const project=controller.projects.get(payload.id);
     const text=`Projeto SanduBAH: ${project.name}\nObjetivo: ${project.goal}\nHarness local: ${controller.projects.location(project.id)}\nUse apenas esta cópia local de Ruflo. Um worker. Não altere gateway ou configurações globais.\n\nPapéis e missões:\n${JSON.stringify({agents:project.agents,missions:project.missions.map(({title,tool,status})=>({title,tool,status}))},null,2)}\n\nContexto de referência:${controller.projects.context(project,{})}`;

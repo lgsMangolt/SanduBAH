@@ -115,10 +115,12 @@ test('timeout de processo não é declarado sucesso',async()=>{
   const app=controller();await assert.rejects(app.single('timeout',()=>app.runProcess(runtime.nodeExecutable,['-e','setTimeout(()=>{},10000)'],{timeoutMs:50})),/desconhecido/);
 });
 for(const mode of ['normal','timeout','oversize','invalid','exit'])test(`transporte MCP isolado: ${mode}`,async()=>{
-  const client=new backend.LocalMcpClient({nodeExecutable:runtime.nodeExecutable,launcher:join(__dirname,'fixtures/sandubah-mcp.cjs'),cwd:testRoot,env:{...process.env,SANDUBAH_FIXTURE_MODE:mode},timeoutMs:mode==='timeout'?150:3000});
+  const client=new backend.LocalMcpClient({nodeExecutable:runtime.nodeExecutable,launcher:join(__dirname,'fixtures/sandubah-mcp.cjs'),cwd:testRoot,env:{...process.env,SANDUBAH_FIXTURE_MODE:mode},timeoutMs:3000});
   try{
     await client.connect();assert.equal(client.ready,true);assert.ok(client.toolNames.has('mcp_status'));
+    // O limite curto vale só para a chamada: a partida do processo pode passar de 150 ms com a CPU ocupada.
+    if(mode==='timeout')client.options.timeoutMs=150;
     if(mode==='normal'){const result=await client.request('tools/call',{name:'mcp_status',arguments:{}});assert.equal(JSON.parse(result.content[0].text).pid,client.child.pid);}
-    else await assert.rejects(client.request('tools/call',{name:'mcp_status',arguments:{}}));
+    else await assert.rejects(client.request('tools/call',{name:'mcp_status',arguments:{}}),mode==='timeout'?/Tempo esgotado/:undefined);
   }finally{client.close();assert.equal(client.pending.size,0);assert.equal(client.child,null);}
 });

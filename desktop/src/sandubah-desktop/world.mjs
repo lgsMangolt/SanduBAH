@@ -2,6 +2,8 @@ import { normalized, initialArguments, createWorkerPanel, workerPanelKey, worker
 import {createBrainMap} from './brain-3d.mjs';
 import {createBrainHub} from './brain-hub.mjs';
 import {missionDraft,executorChoices} from './harness-executors.mjs';
+import {createProjectTrack} from './project-track.mjs';
+import {createProjectHistory} from './project-history.mjs';
 
 const node=(tag,className,text)=>{const value=document.createElement(tag);if(className)value.className=className;if(text!==undefined)value.textContent=text;return value;};
 const button=(text,action,className='button')=>{const value=node('button',className,text);value.type='button';value.addEventListener('click',action);return value;};
@@ -189,6 +191,8 @@ export function createWorld({api,catalog,notify,output,navigate}){
     const completed=current.missions.filter(mission=>mission.status==='done').length;
     const progress=node('div','quest-progress');progress.append(node('strong','',current.name),node('span','',`${completed} / ${current.missions.length} missões concluídas · 1 worker`));
     const meter=node('progress');meter.max=Math.max(1,current.missions.length);meter.value=completed;meter.setAttribute('aria-label','Missões concluídas');progress.append(meter,node('p','',current.goal));projectBody.append(progress);
+    const projectId=current.id;
+    projectBody.append(createProjectTrack({api,projectId,run,notify,isBusy:()=>busy,onProjectChanged:async()=>{current=await api.project({action:'get',id:projectId});renderProject();},openPrompt:async path=>{navigate('brain');await openDocument(path,projectId);}}));
     const actions=node('div','world-toolbar');
     const play=button('▶ Revisar e executar fila',run(()=>executeQueue()),'button primary');play.id='run-queue';play.disabled=busy||!current.missions.some(mission=>mission.status==='pending');
     const stop=button('■ Parar após esta missão',run(async()=>{const result=await api.stopQueue();notify(result.message);}));stop.disabled=!busy;stop.id='stop-queue';
@@ -257,6 +261,8 @@ export function createWorld({api,catalog,notify,output,navigate}){
     projectBody.append(board);
     projectBody.append(live);renderWorkerArea(undefined,false);
     const results=node('section','world-card');results.id='artifact-list';results.append(node('h3','','Arquivos do workspace'),node('p','muted','Resultados novos ficam no workspace privado. Arquivos importados podem ser aplicados à cópia, com backup e proteção contra conflitos.'),button('Atualizar arquivos',run(()=>showArtifacts(results,current.id))));projectBody.append(results);run(()=>showArtifacts(results,current.id))();
+    const restore=node('section','world-card');restore.id='checkpoint-list';restore.append(node('h3','','Checkpoints aplicados'),node('p','muted','Cada aplicação guarda o conteúdo anterior. Restaurar exige revisão do diff e confirmação; se o arquivo mudou fora do SanduBAH, nada é sobrescrito.'),button('Atualizar checkpoints',run(()=>showCheckpoints(restore,current.id))));projectBody.append(restore);run(()=>showCheckpoints(restore,current.id))();
+    projectBody.append(createProjectHistory({api,projectId,run,notify,output,isBusy:()=>busy}));
     const context=node('div','world-card');context.append(node('h3','',`Contexto conectado · ${current.context.length} Markdown`),node('p','muted','HARNESS.md, MEMORY.md, documentos conectados, papel do agente e resultados anteriores são lidos novamente a cada missão Codex. Nada para copiar manualmente.'));
     for(const sourcePath of current.context)context.append(button(sourcePath,run(async()=>{navigate('brain');await openDocument(sourcePath);}),'document-chip'));
     context.append(button('◉ Explorar e conectar Markdown',()=>navigate('brain'),'button'));projectBody.append(context);
@@ -267,7 +273,19 @@ export function createWorld({api,catalog,notify,output,navigate}){
     for(const file of files){const row=node('div','artifact-row');row.append(node('code','',file.path),node('small','',`${file.bytes} bytes`),button('Revisar',run(async()=>{
       const artifact=await api.artifact({id,path:file.path});output(file.path,`${artifact.original===null?'ARQUIVO NOVO NO WORKSPACE':`ORIGEM ATUAL:\n${artifact.original}`}\n\nRESULTADO DO CODEX:\n${artifact.content}`);
       row.querySelector('.apply-artifact')?.remove();
-      if(artifact.canApply){const apply=button(artifact.conflict?'Conflito na origem':'Confirmar aplicação',run(async()=>{const result=await api.applyArtifact({id,path:file.path,version:artifact.version});notify(result.cancelled?'Aplicação cancelada.':`Aplicado com backup: ${result.backup}`);apply.disabled=true;}),'button apply-artifact');apply.disabled=busy||artifact.conflict;row.append(apply);}
+      if(artifact.canApply){const apply=button(artifact.conflict?'Conflito na origem':'Confirmar aplicação',run(async()=>{const result=await api.applyArtifact({id,path:file.path,version:artifact.version});notify(result.cancelled?'Aplicação cancelada.':`Aplicado com backup: ${result.backup}`);apply.disabled=true;const list=document.getElementById('checkpoint-list');if(!result.cancelled&&list)await showCheckpoints(list,id);}),'button apply-artifact');apply.disabled=busy||artifact.conflict;row.append(apply);}
+    })));container.append(row);}
+  }
+  async function showCheckpoints(container,id){
+    const checkpoints=await api.checkpoints(id);if(current?.id!==id||!container.isConnected)return;
+    container.querySelectorAll('.checkpoint-row').forEach(row=>row.remove());
+    const labels={applied:'aplicado',restored:'restaurado','external-change':'alterado fora do SanduBAH',missing:'arquivo ausente','backup-invalid':'backup inválido'};
+    if(!checkpoints.length){const empty=node('p','muted checkpoint-row','Nenhuma aplicação registrada neste harness.');container.append(empty);return;}
+    for(const item of checkpoints){const row=node('div','artifact-row checkpoint-row');row.append(node('code','',item.path),node('small','',`${new Date(item.at).toLocaleString('pt-BR')} · ${labels[item.status]||item.status}`),button('Revisar diff',run(async()=>{
+      const checkpoint=await api.checkpoint({id,checkpointId:item.id});
+      output(`Checkpoint ${item.path}`,checkpoint.diff===null?'Diff indisponível: o arquivo atual ou o backup não pode ser lido.':checkpoint.diff.tooLarge?'Arquivo grande demais para o diff integrado. Compare no editor; nada foi omitido silenciosamente.':`--- antes da aplicação (backup)\n+++ arquivo atual na cópia\n${checkpoint.diff.lines.join('\n')}`);
+      row.querySelector('.restore-checkpoint')?.remove();
+      if(checkpoint.canRestore){const action=button('Confirmar restauração',run(async()=>{const result=await api.restoreCheckpoint({id,checkpointId:item.id,version:checkpoint.currentVersion});notify(result.cancelled?'Restauração cancelada.':`Restaurado; backup de segurança: ${result.safety}`);action.disabled=true;if(!result.cancelled)await showCheckpoints(container,id);}),'button restore-checkpoint');action.disabled=busy;row.append(action);}
     })));container.append(row);}
   }
   async function executeQueue(missionId){

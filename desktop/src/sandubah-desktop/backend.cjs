@@ -2,7 +2,7 @@
 
 const { EventEmitter } = require('node:events');
 const { spawn, spawnSync } = require('node:child_process');
-const { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync } = require('node:fs');
+const { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } = require('node:fs');
 const { basename, delimiter, dirname, isAbsolute, join, relative, resolve } = require('node:path');
 const { canRunLocally, scopeArguments, resultFailed } = require('./execution-policy.cjs');
 const { ProjectWorkspace, FILES } = require('./workspace.cjs');
@@ -13,6 +13,9 @@ const { MemoryMonitor } = require('./memory-monitor.cjs');
 const { CloudPlanner } = require('./cloud-planner.cjs');
 const { BrainSearch } = require('./brain-search.cjs');
 const { contextLimit } = require('./context-limits.cjs');
+const { ProjectHistory } = require('./project-history.cjs');
+const { gauchoInstruction, gauchoTaskInstruction } = require('./gaucho.cjs');
+const { secretPattern } = require('./knowledge.cjs');
 
 const MAX_ARGUMENT_BYTES = 65536;
 const MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
@@ -254,6 +257,7 @@ class DesktopController extends EventEmitter {
     this.models = new ModelManager({root:this.repositoryRoot,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),planner:this.planner,isBusy:()=>Boolean(this.active),execute:(label,operation)=>this.single(label,operation),terminate:terminateOwnedChild});
     this.models.on('change',snapshot=>this.emit('models',snapshot));
     this.projects = new ProjectWorkspace({repositoryRoot:this.repositoryRoot,catalog,personalLibrary,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),readLocal:source=>localPath(this.repositoryRoot,source),isRunning:id=>this.active?.projectId===id});
+    this.versionHistory = new ProjectHistory({projects:this.projects,secretPattern});
     this.queueStopped = false;
     this.mcp = mcpClient || new LocalMcpClient({ nodeExecutable:runtime.nodeExecutable, launcher:join(this.repositoryRoot,'scripts/sandubah-mcp.cjs'), cwd:this.stateDirectory, env:localEnvironment(this.repositoryRoot,runtime.nodeExecutable,process.env,this.stateDirectory) });
     this.mcp.on('disconnected', () => this.emit('state', this.status()));
@@ -295,6 +299,69 @@ class DesktopController extends EventEmitter {
     const report=this.plannerContextPreview(payload);if(report.blocked)throw new Error(report.message);
     if(payload.contextFingerprint&&payload.contextFingerprint!==report.fingerprint)throw new Error('Os documentos mudaram durante a busca. Envie novamente para usar a versão atual; nada foi enviado.');
     const {context,...contextInfo}=report;return {context,contextInfo};
+  }
+  gauchoSelection(gaucho){
+    const selection=gaucho.selection;if(!selection)throw new Error('Escolha o Codex ou o Claude para este gauchinho antes de conversar.');
+    if(!this.cloud.status().providers.find(item=>item.id===selection.provider)?.installed)throw new Error(`${selection.provider==='codex'?'Codex':'Claude'} não encontrado neste PC. Instale e entre na CLI oficial.`);
+    return selection;
+  }
+  async trainGauchoField(payload){
+    // Treino local na CPU: não envia dados nem chama modelos, mas ocupa o worker até terminar ou bater no limite.
+    return this.single('Treinar no campo · um worker',async()=>this.gauchos.trainField(payload?.id,{course:payload?.course,episodes:payload?.episodes}));
+  }
+  async runGauchoTask(payload){
+    return this.single('Tarefa do gauchinho · um worker',async()=>{
+      const gaucho=this.gauchos.profile(payload?.id),selection=this.gauchoSelection(gaucho);
+      const {task,context,info}=this.gauchos.taskContext(gaucho.id,payload?.taskId);
+      if(task.tools)return this.runGauchoTools(gaucho,task,{selection,context,info});
+      if(!await this.confirm({entry:{name:`tarefa para ${gaucho.name}`,kind:'gaucho-task'},project:this.gauchos.folder(gaucho.id),projectName:gaucho.name,contextInfo:{included:info.knowledgeSources},arguments:{selection,prompt:`${task.title}
+
+${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {cancelled:true};
+      if(this.mcp.ready)this.mcp.close();this.active.worker=this.cloud;
+      let response;
+      try{response=await this.cloud.run({prompt:task.instructions},{context,selection,instruction:gauchoTaskInstruction(gaucho.name)});}
+      catch(error){this.gauchos.finishTask(gaucho.id,task.id,{error:error.message});throw error;}
+      const finished=this.gauchos.finishTask(gaucho.id,task.id,{result:response.answer,usage:response.usage,provider:response.provider,model:response.model});
+      return {...this.gauchos.get(gaucho.id),task:finished,usage:response.usage,info};
+    });
+  }
+  gauchoSkills(ids){
+    return ids.map(id=>{const document=this.readSource(id);let name=null;try{name=this.entry(id).name;}catch{}return {id,title:name||document.title||document.name||id,content:String(document.content||'')};});
+  }
+  // Tarefa com ferramentas: ensaio numa cópia, pelo Codex com sandbox e sem rede; nada chega à pasta dele sem revisão.
+  async runGauchoTools(gaucho,task,{selection,context,info}){
+    if(selection.provider!=='codex')throw new Error('Ferramentas só funcionam com o Codex, que tem sandbox. Troque o modelo em Ajustes ou desmarque ferramentas.');
+    const rules=this.gauchos.permissions(gaucho.id),skills=this.gauchoSkills(rules.skills);
+    const prepared=this.gauchos.prepareToolRun(gaucho.id,task.id,{context,skills});
+    if(!await this.confirm({entry:{name:`tarefa com ferramentas para ${gaucho.name}`,kind:'gaucho-tools'},project:prepared.work,projectName:gaucho.name,contextInfo:{included:info.knowledgeSources},arguments:{selection,prompt:`${task.title}\n\n${task.instructions}`,history:[],context:prepared.prompt,attachments:[],lessons:info,rules,skills:skills.map(skill=>skill.title)}})){rmSync(prepared.runDirectory,{recursive:true,force:true});return {cancelled:true};}
+    if(this.mcp.ready)this.mcp.close();
+    const worker=this.createCodexWorker();worker.timeoutMs=rules.timeoutMinutes*60000;this.active.worker=worker;
+    let result;
+    try{result=await worker.run({workspace:prepared.work,runDirectory:prepared.runDirectory,prompt:prepared.prompt,settings:{...codexSettings(),model:selection.model,effort:selection.effort||undefined},sandbox:rules.mode==='write'?'workspace-write':'read-only'});}
+    catch(error){this.gauchos.finishToolRun(gaucho.id,task.id,{runId:prepared.runId,result:{success:false,message:error.message}});throw error;}
+    const finished=this.gauchos.finishToolRun(gaucho.id,task.id,{runId:prepared.runId,result});
+    return {...this.gauchos.get(gaucho.id),task:finished,usage:result.usage,info};
+  }
+  async applyGauchoRun(payload){
+    return this.single('Aplicar ensaio do gauchinho',async()=>{
+      const gaucho=this.gauchos.profile(payload?.id),task=this.gauchos.task(gaucho.id,payload?.taskId);
+      if(task.status!=='review')throw new Error('Não há ensaio esperando revisão nesta tarefa.');
+      if(!await this.confirm({entry:{name:`aplicar o ensaio de ${gaucho.name}`,kind:'gaucho-apply'},project:this.gauchos.workspaceDir(gaucho.id),arguments:{tarefa:task.title,arquivos:task.run.changes.map(change=>`${{new:'novo',modified:'alterado',deleted:'removido'}[change.state]} · ${change.path}`)}}))return {cancelled:true};
+      return this.gauchos.applyToolRun(gaucho.id,task.id);
+    });
+  }
+  async chatGaucho(payload){
+    return this.single('Conversar com gauchinho · um worker',async()=>{
+      const gaucho=this.gauchos.profile(payload?.id),prompt=typeof payload?.prompt==='string'?payload.prompt.trim():'';
+      if(!prompt||prompt.length>4000)throw new Error('Escreva uma mensagem de até 4.000 caracteres.');
+      const selection=this.gauchoSelection(gaucho);
+      const {context,info}=this.gauchos.context(gaucho.id,prompt),history=this.gauchos.history(gaucho.id);
+      if(!await this.confirm({entry:{name:`conversar com ${gaucho.name}`,kind:'gaucho-chat'},project:this.gauchos.folder(gaucho.id),projectName:gaucho.name,contextInfo:{included:info.knowledgeSources},arguments:{selection,prompt,history,context,attachments:[],lessons:info}}))return {cancelled:true};
+      if(this.mcp.ready)this.mcp.close();this.active.worker=this.cloud;
+      const response=await this.cloud.run({prompt,history},{context,selection,instruction:gauchoInstruction(gaucho.name)});
+      const reply=this.gauchos.record(gaucho.id,{prompt,answer:response.answer,provider:response.provider,model:response.model,usage:response.usage});
+      return {...this.gauchos.get(gaucho.id),reply,usage:response.usage,info};
+    });
   }
   async planWithCloud(payload){
     return this.single('Planejar na nuvem · um worker',async()=>{
@@ -541,6 +608,37 @@ class DesktopController extends EventEmitter {
       if(!await this.confirm({entry:{name:`aplicar ${payload.path}`,kind:'artifact'},project:this.repositoryRoot,arguments:{path:payload.path,version:payload.version,backup:true}}))return {cancelled:true};
       return this.projects.applyArtifact(payload);
     });
+  }
+  async restoreCheckpoint(payload){
+    return this.single('Restaurar checkpoint',async()=>{
+      const checkpoint=this.projects.checkpoint(payload.id,payload.checkpointId);
+      if(!checkpoint.canRestore||checkpoint.currentVersion!==payload.version)throw new Error('Checkpoint não restaurável ou o arquivo mudou. Reabra para revisar.');
+      if(!await this.confirm({entry:{name:`restaurar ${checkpoint.path}`,kind:'checkpoint'},project:this.repositoryRoot,arguments:{path:checkpoint.path,checkpoint:checkpoint.id,appliedAt:checkpoint.at,version:payload.version,safetyBackup:true}}))return {cancelled:true};
+      return this.projects.restoreCheckpoint(payload);
+    });
+  }
+  async historyAction(payload){
+    const action=payload?.action;
+    if(action==='status')return this.versionHistory.status(payload.id);
+    if(action==='show')return this.versionHistory.show(payload.id,payload.hash);
+    if(this.active)throw new Error('Aguarde a operação atual terminar antes de salvar ou restaurar versões.');
+    if(action==='save')return this.versionHistory.save(payload.id,payload.input);
+    if(action==='restore')return this.single('Restaurar versão',async()=>{
+      const version=this.versionHistory.versions(payload.id).find(item=>item.hash===payload.hash);
+      if(!version)throw new Error('Versão fora do histórico deste projeto.');
+      if(!await this.confirm({entry:{name:`restaurar a versão ${version.number}`,kind:'version-restore'},project:this.repositoryRoot,arguments:{version:version.number,commit:version.short,subject:version.subject,savedAt:version.date}}))return {cancelled:true};
+      return this.versionHistory.restore(payload.id,payload.hash);
+    });
+    if(action==='set-remote')return this.versionHistory.setRemote(payload.id,payload.url);
+    if(action==='remove-remote')return this.versionHistory.removeRemote(payload.id);
+    if(action==='push')return this.single('Enviar versões ao GitHub',async()=>{
+      const plan=await this.versionHistory.pushPlan(payload.id);
+      const visibility={public:'PÚBLICO: qualquer pessoa verá estes arquivos','private-or-missing':'privado ou ainda não criado (o GitHub não o mostra sem login)',unknown:'não foi possível verificar'}[plan.visibility];
+      const approved=await this.confirm({entry:{name:`enviar ${plan.pending.length} ${plan.pending.length===1?'versão':'versões'} ao GitHub`,kind:'github-push',visibility:plan.visibility},project:this.repositoryRoot,arguments:{repositorio:plan.web||plan.url,visibilidade:visibility,branch:plan.branch,versoes:plan.pending.map(item=>item.subject),mudancasSemVersao:plan.unsaved?`${plan.unsaved} arquivo(s) fora deste envio`:'nenhuma'}});
+      if(!approved)return {cancelled:true};
+      return this.versionHistory.push(payload.id);
+    });
+    throw new Error('Ação de histórico inválida.');
   }
   stopQueue(){this.queueStopped=true;return {message:'A fila para após a missão atual. Nenhuma chamada será repetida.'};}
   readSource(id) {
