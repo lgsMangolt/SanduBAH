@@ -26,9 +26,11 @@ function Invoke-OwnProcess([string]$File,[string[]]$Arguments,[int]$Timeout=1800
     $info.RedirectStandardError = $true
     $info.WorkingDirectory = $homeDirectory
     $info.Environment.Clear()
-    foreach ($name in @('SystemRoot','WINDIR','COMSPEC','TEMP','TMP','PATH','LOCALAPPDATA','ProgramFiles','ProgramFiles(x86)','ProgramW6432','GITHUB_ACTIONS','RUNNER_ENVIRONMENT','RUNNER_OS','GITHUB_REPOSITORY','RUNNER_TEMP','SANDUBAH_VISITOR_DIRECTORY','SANDUBAH_VISITOR_HOME','SANDUBAH_TEST_TOOLS','SANDUBAH_EXPECTED_SHA256','SANDUBAH_SITE_INDEX_SHA256','SANDUBAH_SITE_APP_SHA256')) { $value = [Environment]::GetEnvironmentVariable($name); if ($value) { $info.Environment[$name] = $value } }
+    foreach ($name in @('SystemRoot','WINDIR','COMSPEC','TEMP','TMP','PATH','PATHEXT','OS','USERNAME','USERDOMAIN','NUMBER_OF_PROCESSORS','PROCESSOR_ARCHITECTURE','LOCALAPPDATA','ProgramFiles','ProgramFiles(x86)','ProgramW6432','GITHUB_ACTIONS','RUNNER_ENVIRONMENT','RUNNER_OS','GITHUB_REPOSITORY','RUNNER_TEMP','SANDUBAH_VISITOR_DIRECTORY','SANDUBAH_VISITOR_HOME','SANDUBAH_TEST_TOOLS','SANDUBAH_EXPECTED_SHA256','SANDUBAH_SITE_INDEX_SHA256','SANDUBAH_SITE_APP_SHA256')) { $value = [Environment]::GetEnvironmentVariable($name); if ($value) { $info.Environment[$name] = $value } }
     $info.Environment['USERPROFILE'] = if ($OriginalProfile) { $env:USERPROFILE } else { $homeDirectory }
     $info.Environment['HOME'] = $info.Environment['USERPROFILE']
+    $info.Environment['HOMEDRIVE'] = [IO.Path]::GetPathRoot($info.Environment['USERPROFILE']).TrimEnd('\')
+    $info.Environment['HOMEPATH'] = $info.Environment['USERPROFILE'].Substring($info.Environment['HOMEDRIVE'].Length)
     $info.Environment['APPDATA'] = if ($OriginalProfile) { $env:APPDATA } else { Join-Path $homeDirectory 'AppData/Roaming' }
     $info.Environment['CLAUDE_CONFIG_DIR'] = Join-Path $homeDirectory '.claude'
     $info.Environment['DISABLE_AUTOUPDATER'] = '1'
@@ -41,7 +43,7 @@ function Invoke-OwnProcess([string]$File,[string[]]$Arguments,[int]$Timeout=1800
     if (-not $process.WaitForExit($Timeout)) { & "$env:SystemRoot/System32/taskkill.exe" /PID $process.Id /T /F | Out-Null; throw "The $stage test-owned child exceeded its deadline." }
     $output = $stdout.GetAwaiter().GetResult()
     $errorOutput = $stderr.GetAwaiter().GetResult()
-    if ($process.ExitCode -ne 0) { throw "The $stage child failed with code $($process.ExitCode). No raw authentication output is published." }
+    if ($process.ExitCode -ne 0) { if ($stage -eq 'install-official-claude') { Write-Host (($output + $errorOutput).Substring(0,[Math]::Min(5000,($output + $errorOutput).Length)).Replace($homeDirectory,'[empty VM profile]')) }; throw "The $stage child failed with code $($process.ExitCode). No raw authentication output is published." }
     return $output
 }
 try {
