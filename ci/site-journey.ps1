@@ -43,7 +43,7 @@ function Invoke-OwnProcess([string]$File,[string[]]$Arguments,[int]$Timeout=1800
     if (-not $process.WaitForExit($Timeout)) { & "$env:SystemRoot/System32/taskkill.exe" /PID $process.Id /T /F | Out-Null; throw "The $stage test-owned child exceeded its deadline." }
     $output = $stdout.GetAwaiter().GetResult()
     $errorOutput = $stderr.GetAwaiter().GetResult()
-    if ($process.ExitCode -ne 0) { if ($stage -eq 'install-official-claude') { Write-Host (($output + $errorOutput).Substring(0,[Math]::Min(5000,($output + $errorOutput).Length)).Replace($homeDirectory,'[empty VM profile]')) }; throw "The $stage child failed with code $($process.ExitCode). No raw authentication output is published." }
+    if ($process.ExitCode -ne 0) { if ($stage -in @('install-official-claude','installed-connection-panel')) { Write-Host (($output + $errorOutput).Substring(0,[Math]::Min(5000,($output + $errorOutput).Length)).Replace($homeDirectory,'[empty VM profile]')) }; throw "The $stage child failed with code $($process.ExitCode). No raw authentication output is published." }
     return $output
 }
 try {
@@ -103,6 +103,7 @@ try {
     Write-Host "Validation stopped at $stage."
     Write-Host $_.Exception.Message
 } finally {
+    if (Test-Path -LiteralPath (Join-Path $directory 'installed-progress.json')) { $report.installedProgress = Get-Content -LiteralPath (Join-Path $directory 'installed-progress.json') -Raw | ConvertFrom-Json }
     $report.checkedAt = [DateTime]::UtcNow.ToString('o')
     $report | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $evidence 'report.json') -Encoding utf8NoBOM
 }
