@@ -1,0 +1,57 @@
+name: SanduBAH website visitor validation
+run-name: Test the public website and ${{ inputs.provider }} setup in a fresh Windows VM
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        required: true
+        type: choice
+        options:
+          - codex
+          - claude
+      installer_sha256:
+        required: true
+        type: string
+      site_index_sha256:
+        required: true
+        type: string
+      site_app_sha256:
+        required: true
+        type: string
+      provider_bootstrap_sha256:
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: sandubah-desktop-release
+  cancel-in-progress: false
+jobs:
+  website-install-provider:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Follow the public website and native provider setup without credentials
+        shell: pwsh
+        env:
+          SANDUBAH_EXPECTED_SHA256: ${{ inputs.installer_sha256 }}
+          SANDUBAH_SITE_INDEX_SHA256: ${{ inputs.site_index_sha256 }}
+          SANDUBAH_SITE_APP_SHA256: ${{ inputs.site_app_sha256 }}
+          SANDUBAH_VISITOR_PROVIDER: ${{ inputs.provider }}
+          SANDUBAH_PROVIDER_BOOTSTRAP_SHA256: ${{ inputs.provider_bootstrap_sha256 }}
+        run: ./ci/site-journey.ps1
+      - name: Keep only the sanitized report and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: SanduBAH-visitor-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/sandubah-visitor/evidence/report.json
+            ${{ runner.temp }}/sandubah-visitor/evidence/site.png
+            ${{ runner.temp }}/sandubah-visitor/evidence/guide.png
+            ${{ runner.temp }}/sandubah-visitor/evidence/connections.png
+          if-no-files-found: error
+          retention-days: 14

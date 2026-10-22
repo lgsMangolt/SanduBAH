@@ -1,0 +1,104 @@
+body[data-current-view="planner"] .page-heading { display: none; }
+.planner-suggestions [aria-pressed="true"]{background:#263326;color:#fff;border-color:#263326}.planner-suggestions [aria-pressed="true"]::after{content:' · ligado'}
+#planner-view .qwen-panel { max-width: none; padding: 22px; }
+#planner-view .qwen-heading { margin-bottom: 20px; align-items: center; }
+#planner-view .qwen-heading img { width: 48px; height: 48px; }
+#planner-view .qwen-heading h2 { font-size: 23px; line-height: 1.3; letter-spacing: -.6px; margin-top: 5px; }
+.planner-eyebrow { color: #8a6040; letter-spacing: 1.6px; font-size: 9px; font-weight: 700; }
+.planner-local-badge { margin-left: auto; flex-shrink: 0; border: 1px solid #dce6d7; border-radius: 30px; color: #466b48; padding: 8px 12px; font-size: 11px; background: #f5f9f1; }
+.planner-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 26px; align-items: start; }
+.planner-workspace, .planner-models { min-width: 0; }
+.planner-readiness { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 16px 18px; background: #fff6ec; border: 1px solid #f0ddc8; border-radius: 12px; }
+.planner-readiness[data-state="ready"] { background: #f2f7ef; border-color: #dee8d7; }
+.planner-readiness strong { font-size: 13px; }
+.planner-readiness p { font-size: 12px; line-height: 1.6; color: #6a7166; margin: 4px 0 0; }
+.planner-readiness .button { font-size: 11px; flex-shrink: 0; max-width: 185px; white-space: normal; }
+.planner-readiness .planner-resource-hint { color: #945222; padding: 0; font-size: 11px; line-height: 1.6; margin: 6px 0 0; }
+.planner-context { margin: 18px 0 0; }
+.planner-context .field-label { margin-top: 0; }
+.planner-context select { width: 100%; border: 1px solid var(--line); background: #fff; padding: 10px 12px; border-radius: 9px; color: var(--ink); }
+.planner-context p { font-size: 11px; margin: 6px 0; }
+.planner-empty { margin: 14px 0; padding: 12px; border: 1px dashed #dce3d6; border-radius: 12px; background: #fafbf8; }
+.planner-suggestions { display: flex; flex-wrap: wrap; gap: 7px; }
+.planner-suggestions button { border: 1px solid #e4e7de; background: #fff; border-radius: 7px; padding: 8px 10px; font-size: 10px; text-align: left; }
+.planner-suggestions button:hover { border-color: #cf9b6e; background: #fff8ef; }
+#planner-view .qwen-form { padding: 16px; border: 1px solid #dfe4d9; border-radius: 12px; gap: 10px; background: #fff; }
+#planner-view .qwen-form:focus-within { border-color: #c2946a; box-shadow: 0 0 0 3px #e8753709; }
+#planner-view .qwen-form .field-label { margin: 0; font-size: 12px; }
+#planner-view .qwen-form textarea { border: 0; background: #fff; padding: 0; min-height: 74px; font-size: 14px; line-height: 1.6; }
+#planner-view .qwen-form textarea:focus-visible { outline: none; }
+.planner-attachments .button { padding: 7px 9px; font-size: 11px; }
+.planner-attachments #qwen-clear { margin-left: auto; }
+.planner-attachments #qwen-image-name { font-size: 10px; max-width: 160px; }
+.planner-send { padding-top: 12px; border-top: 1px solid var(--line); }
+.planner-send > span { margin-right: auto; font-size: 10px; }
+.planner-send #qwen-stop { font-size: 11px; padding: 9px 12px; }
+.planner-send #qwen-stop:disabled { display: none; }
+.planner-send #qwen-send { padding: 11px 17px; font-size: 12px; }
+#planner-view .qwen-messages { margin: 16px 0; max-height: 380px; }
+#planner-view .qwen-messages:empty { display: none; }
+#planner-view #qwen-metrics { font-size: 10px; line-height: 1.6; margin: 12px 0; }
+.planner-help { font-size: 11px; color: var(--muted); line-height: 1.8; }
+.planner-help summary { cursor: pointer; color: #5d6756; }
+.planner-models { padding-left: 24px; border-left: 1px solid var(--line); }
+.planner-models-heading h3 { font-size: 16px; margin: 6px 0; }
+.planner-models-heading p { font-size: 11px; color: var(--muted); line-height: 1.7; margin: 0; }
+.planner-models .model-cards { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 12px; }
+.planner-models .model-card { padding: 15px; border-radius: 12px; background: #fbfcf8; }
+.planner-models .model-card.selected { background: #fff9f0; border-color: #d7a371; box-shadow: none; }
+.planner-models .model-card-top { align-items: center; }
+.planner-models .model-select { font-size: 12px; }
+.planner-models .model-state { font-size: 10px; margin: 9px 0 12px; min-height: 0; }
+.planner-models .model-use { font-size: 11px; padding: 9px 12px; margin-bottom: 12px; }
+.planner-models .model-info { font-size: 11px; margin: 0 0 6px; }
+.planner-models .model-info summary { font-size: 10px; }
+.planner-models .model-info p { margin: 10px 0; }
+.planner-models .model-maintenance { border: 0; background: transparent; text-align: left; font-size: 10px; padding: 8px 0 0; color: #746c60; box-shadow: none; }
+.planner-models > .qwen-note { font-size: 10px; }
+#planner-view:not([hidden]) .planner-workspace { animation: planner-enter .24s ease-out both; }
+#planner-view:not([hidden]) .planner-models { animation: planner-enter .3s ease-out both; }
+@keyframes planner-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@media (max-width: 1200px) {
+  .planner-layout { grid-template-columns: minmax(0, 1fr); }
+  .planner-models { border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; }
+  .planner-models .model-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+}
+@media (max-width: 650px) {
+  #planner-view .qwen-panel { padding: 17px; }
+  #planner-view .qwen-heading { gap: 12px; margin-bottom: 20px; }
+  #planner-view .qwen-heading h2 { font-size: 19px; }
+  #planner-view .qwen-heading p { font-size: 11px; }
+  .planner-local-badge { display: none; }
+  .planner-readiness { flex-direction: column; align-items: stretch; padding: 14px; }
+  .planner-readiness .button { max-width: none; }
+  .planner-empty { padding: 15px; }
+  .planner-attachments #qwen-clear { margin-left: 0; }
+  .planner-send > span { flex-basis: 100%; }
+  .planner-send #qwen-send { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #planner-view .planner-workspace, #planner-view .planner-models { animation: none; }
+}
+.cloud-selection{display:grid;gap:8px}.cloud-quota{padding:10px;border:1px solid #dde3d9;border-radius:10px;margin:8px 0}.cloud-quota progress{display:block;width:100%}.cloud-quota small{display:block;color:#6a7464}
+body[data-current-view="planner"][data-planner-provider="codex"] .planner-models,body[data-current-view="planner"][data-planner-provider="claude"] .planner-models,body[data-current-view="planner"][data-planner-provider="codex"] .memory-section,body[data-current-view="planner"][data-planner-provider="claude"] .memory-section{display:none}
+body[data-current-view="planner"][data-planner-provider="codex"] .planner-layout,body[data-current-view="planner"][data-planner-provider="claude"] .planner-layout{grid-template-columns:minmax(0,1fr)}
+#brain-context-sources{overflow-wrap:anywhere}
+#planner-view .qwen-messages{background:#f0f3ec;background-image:radial-gradient(#8b9c7d18 .7px,transparent .7px);background-size:18px 18px;padding:18px;gap:12px;border:1px solid #e0e6d9;border-radius:16px;max-height:440px;scrollbar-gutter:stable}
+#planner-view .qwen-message{position:relative;align-self:flex-start;width:fit-content;max-width:86%;padding:12px 15px 8px;border:0;border-radius:2px 14px 14px;background:#fff;box-shadow:0 1px 2px #2433200c}
+#planner-view .qwen-message.user{align-self:flex-end;background:#dff0d6;border-radius:14px 2px 14px 14px}
+#planner-view .qwen-message p{font-size:14px;line-height:1.65;margin:5px 0 3px}
+.qwen-message-footer{display:flex;justify-content:flex-end;align-items:center;gap:7px;min-height:17px;color:#76836e;font-size:10px;font-variant-numeric:tabular-nums}
+.qwen-delivery{display:inline-flex;align-items:center;min-width:16px;justify-content:center;color:#74816d;font-size:15px;line-height:1}
+.qwen-delivery[data-receipt="read"]{color:#2285bd}
+.qwen-receipt-ticks{display:inline-flex;align-items:center;font-weight:700;letter-spacing:-1px}
+.qwen-receipt-ticks>span+span{margin-left:-6px}
+.qwen-receipt-clock{display:inline-block;width:11px;height:11px;border:1.3px solid currentColor;border-radius:50%;position:relative}
+.qwen-receipt-clock::after{content:"";position:absolute;left:4px;top:1px;width:3px;height:4px;border-left:1px solid currentColor;border-bottom:1px solid currentColor}
+.qwen-delivery-note{display:block;color:#7f6750;font-size:10px;line-height:1.5;margin:5px 0 2px}
+.qwen-typing{align-self:flex-start;display:flex;align-items:center;gap:12px;padding:12px 15px;max-width:90%;border-radius:3px 16px 16px;background:#fff;box-shadow:0 1px 2px #2433200c;color:#66735e;font-size:11px}
+.qwen-typing-dots{display:inline-flex;gap:3px;align-items:center;height:14px;flex-shrink:0}
+.qwen-typing-dots i{width:5px;height:5px;background:#809375;border-radius:50%;animation:planner-typing 1.2s ease-in-out infinite}
+.qwen-typing-dots i:nth-child(2){animation-delay:.15s}.qwen-typing-dots i:nth-child(3){animation-delay:.3s}
+@keyframes planner-typing{0%,60%,100%{opacity:.4;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+@media(prefers-reduced-motion:reduce){.qwen-typing-dots i{animation:none}}
+@media(max-width:650px){#planner-view .qwen-messages{padding:12px}#planner-view .qwen-message{max-width:94%}}

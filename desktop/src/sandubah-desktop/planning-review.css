@@ -1,0 +1,24 @@
+.planning-review{box-sizing:border-box;width:min(620px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:0;border:1px solid #e1e5dc;border-radius:22px;background:#fffefa;color:#263127;box-shadow:0 24px 90px #1723182e;overflow:hidden}
+.planning-review[open]{display:flex;flex-direction:column}
+.planning-review::backdrop{background:#1d2b2359;backdrop-filter:blur(3px)}
+.planning-review-heading{display:flex;align-items:center;gap:16px;padding:26px 28px 20px;flex-shrink:0}
+.planning-review-heading img{width:56px;height:56px;object-fit:contain;image-rendering:pixelated}
+.planning-review-eyebrow{font-size:10px;letter-spacing:.13em;color:#7b886e;margin:0 0 7px}
+.planning-review h2{font-size:24px;margin:0;line-height:1.2}
+.planning-review-project{font-size:12px;color:#73806d;margin:8px 0 0;overflow-wrap:anywhere}
+.planning-review-body{padding:0 28px 24px;overflow:auto;min-height:0;overscroll-behavior:contain}
+.planning-review-intro{font-size:14px;line-height:1.7;margin:0 0 20px;color:#53604f}
+.planning-review-facts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.planning-review-facts>div{padding:14px;background:#f1f4ec;border:1px solid #e4e9dd;border-radius:12px;min-width:0}
+.planning-review-facts span{display:block;font-size:11px;color:#72806b;margin-bottom:5px}
+.planning-review-facts strong{font-size:13px;overflow-wrap:anywhere}
+.planning-review h3{font-size:12px;margin:0 0 10px}
+.planning-review-prompt{font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 18px}
+.planning-review-notice{padding:13px 15px;background:#faf1e6;border-radius:12px;font-size:12px;line-height:1.65;color:#775f44}
+.planning-review details{border-top:1px solid #e7eadf;padding:13px 0;font-size:12px;line-height:1.6}
+.planning-review summary{cursor:pointer;color:#52664b;font-weight:600}
+.planning-review li{margin:6px 0;overflow-wrap:anywhere}
+.planning-review-context{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65;padding:14px;background:#f5f6f1;border-radius:10px;max-height:320px;overflow:auto}
+.planning-review footer{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e6eadd;padding:17px 28px;background:#f8faf4;flex-shrink:0}
+.planning-review button:focus-visible,.planning-review summary:focus-visible{outline:3px solid #bfcead;outline-offset:3px}
+@media(max-width:520px){.planning-review-heading{padding:20px}.planning-review-body{padding:0 20px 20px}.planning-review h2{font-size:21px}.planning-review-facts{grid-template-columns:1fr}.planning-review footer{padding:16px 20px}.planning-review footer button{flex:1}}

@@ -1,0 +1,39 @@
+name: SanduBAH desktop release validation
+run-name: Validate SanduBAH installer in a fresh Windows VM
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Draft release ID
+        required: true
+        type: string
+      installer_sha256:
+        description: Audited installer SHA-256
+        required: true
+        type: string
+      test_tools_sha256:
+        description: Audited offline test controller SHA-256
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: sandubah-desktop-release
+  cancel-in-progress: false
+jobs:
+  windows-install-uninstall:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install, open, reinstall and uninstall the actual desktop package
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SANDUBAH_RELEASE_ID: ${{ inputs.release_id }}
+          SANDUBAH_EXPECTED_SHA256: ${{ inputs.installer_sha256 }}
+          SANDUBAH_TEST_TOOLS_SHA256: ${{ inputs.test_tools_sha256 }}
+          SANDUBAH_TEST_TOOLS: ${{ runner.temp }}/sandubah-test-tools
+        run: ./ci/test-installed-desktop.ps1 -ReleaseId $env:SANDUBAH_RELEASE_ID -ExpectedSha256 $env:SANDUBAH_EXPECTED_SHA256

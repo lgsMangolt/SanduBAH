@@ -68,6 +68,14 @@ O desktop experimental combina CLIs instaladas, contexto Markdown e execução c
 
 ## Estrutura
 
+### Fontes desktop para desenvolvimento · 22/10/2026
+
+O código revisado da personalização desktop está em **[desktop/](desktop/README.md)**, com scripts, testes e **[resumo para continuar no Claude](desktop/CLAUDE.md)**. É um overlay sobre Ruflo, não uma cópia completa do monorepo nem um ambiente de build já validado em clone limpo.
+
+Inclui a lateral com Novo projeto em destaque, opções por projeto, estudos por tipo/Central, busca seletiva e avisos com contador 1–9/9+. A exportação usa lista explícita de arquivos, verificação de segredos/termos privados e remoção de metadados dos PNG. Não inclui projetos, Cérebro pessoal, conversas, chaves ou dependências do ambiente local.
+
+**Publicar fontes não atualiza o instalador:** a Release disponível continua sendo 0.1.0. As funcionalidades posteriores precisam de novo build, auditoria e teste em VM antes de uma nova Release. O guia Claude How To foi estudado como referência; checkpoints, novos gates e templates adicionais estão documentados como pendências, não como funcionalidades prontas.
+
 ```text
 index.html       interface da demonstração
 style.css        visual responsivo

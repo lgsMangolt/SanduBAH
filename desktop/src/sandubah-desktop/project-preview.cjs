@@ -1,0 +1,14 @@
+'use strict';
+const {existsSync,readdirSync,lstatSync,readFileSync,realpathSync}=require('node:fs');
+const {join,resolve,relative,isAbsolute,extname,sep}=require('node:path');
+const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.mjs':'text/javascript','.cjs':'text/javascript','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.gif':'image/gif','.woff2':'font/woff2','.txt':'text/plain','.md':'text/plain'};
+class ProjectPreview{
+  constructor(projects){this.projects=projects;}
+  path(id,file){this.projects.get(id);if(typeof file!=='string'||file.includes('\\')||file.includes('\0')||file.split('/').some(part=>part.startsWith('.')||part==='node_modules'))throw new Error('Arquivo fora da prévia.');const root=this.projects.workspace(id),target=resolve(root,file),inside=relative(root,target);if(!inside||inside.startsWith('..')||isAbsolute(inside))throw new Error('Arquivo fora do projeto.');this.projects.guard(target);if(!realpathSync(target).startsWith(realpathSync(root)+sep))throw new Error('Arquivo fora do workspace.');const info=lstatSync(target);if(!info.isFile()||info.isSymbolicLink()||info.nlink>1||info.size>10*1024*1024)throw new Error('Arquivo não disponível para prévia.');return target;}
+  snapshot(id){const project=this.projects.get(id),root=this.projects.workspace(id),files=[];if(existsSync(root)){const walk=(directory,depth=0)=>{if(depth>8||files.length>2000)return;for(const item of readdirSync(directory,{withFileTypes:true})){if(item.name.startsWith('.')||['node_modules','attachments'].includes(item.name)||item.isSymbolicLink())continue;const filename=join(directory,item.name);this.projects.guard(filename);if(item.isDirectory())walk(filename,depth+1);else if(item.isFile()){const info=lstatSync(filename);files.push({path:relative(root,filename).replaceAll('\\','/'),bytes:info.size,modifiedAt:info.mtimeMs});}}};walk(root);}
+    const entry=['dist/index.html','build/index.html','index.html'].find(path=>files.some(file=>file.path===path))||files.find(file=>file.path.endsWith('.html'))?.path;
+    return {id,name:project.name,files,entry:entry||null,url:entry?`sandubah-preview://${id}/${entry}`:null,missions:project.missions.map(({id,title,status})=>({id,title,status})),workerLimit:1};}
+  read(id,file){const filename=this.path(id,file),type=types[extname(filename).toLowerCase()];if(!type)throw new Error('Este formato não tem prévia.');return {bytes:readFileSync(filename),type:/^(text\/|application\/json|image\/svg)/.test(type)?type+'; charset=utf-8':type};}
+  text(id,file){const {bytes}=this.read(id,file);if(bytes.length>512000||bytes.includes(0))throw new Error('Selecione um arquivo de texto de até 512 KB.');return {path:file,content:bytes.toString('utf8')};}
+}
+module.exports={ProjectPreview};

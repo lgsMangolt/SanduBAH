@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' sandubah-media:; media-src sandubah-media:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src sandubah-preview:">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SanduBAH</title>
+  <link rel="stylesheet" href="office.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="world.css">
+  <link rel="stylesheet" href="brain-3d.css">
+  <link rel="stylesheet" href="brain-hub.css">
+  <link rel="stylesheet" href="product-lifecycle.css">
+  <link rel="stylesheet" href="planner.css">
+  <link rel="stylesheet" href="planner-workspace.css">
+  <link rel="stylesheet" href="planning-review.css">
+  <link rel="stylesheet" href="workbench.css">
+  <link rel="stylesheet" href="tutorials.css">
+  <link rel="stylesheet" href="updates.css">
+  <link rel="stylesheet" href="whats-new.css">
+  <link rel="stylesheet" href="sidebar.css">
+  <link rel="icon" href="sandubah-logo.png">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#inicio" aria-label="SanduBAH, início"><img class="sandubah-logo" src="sandubah-logo.png" alt="Sanduíche de pão cacetinho em pixel art"><span>SanduBAH</span></a>
+      <div class="workspace-label">MEU AMBIENTE <span class="local-dot"></span></div>
+      <nav class="main-nav" aria-label="Navegação principal">
+        <button class="nav-button nav-create" data-view="planner" title="Planejar um novo projeto"><span class="nav-icon" aria-hidden="true">＋</span>Novo projeto<span class="nav-create-arrow" aria-hidden="true">↗</span></button>
+        <button class="nav-button" data-view="projects"><span class="nav-icon">⚑</span>Meus projetos<span class="nav-count"></span></button>
+        <button class="nav-button active" data-view="all"><span class="nav-icon">▦</span>Catálogo<span class="nav-indicator"></span></button>
+        <button class="nav-button" data-view="brain"><span class="nav-icon">◉</span>Cérebro</button>
+        <button class="nav-button" data-view="office"><span class="nav-icon">▥</span>Escritório</button>
+        <button class="nav-button" data-view="tutorials"><span class="nav-icon">▤</span>Tutoriais</button>
+        <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span>Configurações</button>
+      </nav>
+      <div class="sidebar-protection"><span class="shield" aria-hidden="true">◇</span><strong>Você no controle.</strong><p>Seus projetos neste PC.<br>Ações protegidas pedem confirmação.</p><span class="protection-label">AMBIENTE LOCAL</span></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><div class="breadcrumb">Meu ambiente <span>/</span> <strong id="breadcrumb-view">Visão geral</strong></div><div class="topbar-actions"><span id="connection-status" class="status-pill"><span class="status-dot"></span>MCP desconectado</span><button id="connect-button" class="button subtle">Conectar MCP</button><button id="open-codex" class="button subtle">Abrir no Codex <span>↗</span></button></div></header>
+      <main id="main-content">
+        <section class="page-heading"><div><div class="eyebrow">WORKBENCH LOCAL <span class="tiny-separator">/</span> <span id="heading-version">RUFLO CUSTOM</span></div><h1 id="page-title">Tudo o que sua cópia pode fazer.</h1><p id="page-subtitle">Explore as funções reais do seu Ruflo. Inspecione, prepare e execute com controle.</p></div><div class="copy-badge"><span>◈</span><div>Minha cópia<strong>100% local</strong></div></div></section>
+        <div id="load-error" class="alert error" hidden></div>
+        <section id="planner-view" hidden>
+          <div class="qwen-panel">
+            <div class="qwen-heading"><img src="sandubah-logo.png" alt="SanduBAH"><div><span class="planner-eyebrow">DA IDEIA AO HARNESS</span><h2>Vamos planejar seu próximo projeto.</h2><p id="model-current">Verificando a IA local…</p></div><span class="planner-local-badge">● No seu PC</span></div>
+            <div class="planner-layout">
+              <section class="planner-workspace" aria-label="Planejador de harness">
+                <div class="planner-context cloud-selection">
+                  <label class="field-label" for="planner-provider">Onde planejar</label><select id="planner-provider"><option value="local">IAs neste PC</option><option value="codex">Codex · sua conta na nuvem</option><option value="claude">Claude · sua conta na nuvem</option></select>
+                  <label class="field-label" for="planner-cloud-model">Modelo</label><select id="planner-cloud-model" disabled><option>Use os modelos locais ao lado</option></select>
+                  <label class="field-label" for="planner-effort">Força de raciocínio</label><select id="planner-effort" disabled><option value="">Automática</option></select>
+                  <p id="planner-effort-hint" class="qwen-note">Salva para cada modelo neste projeto. Mais força pode aumentar o tempo e o uso da sua cota.</p>
+                  <p id="planner-cloud-info" class="qwen-note">Nuvem dispensa a VRAM de inferência local, mas usa internet e a cota/créditos da sua conta. Níveis são perfis de uso, não garantia de qualidade.</p>
+                  <div id="planner-account-quotas" aria-label="Disponibilidade das contas"></div>
+                </div>
+                <div id="planner-readiness" class="planner-readiness" data-state="loading">
+                  <div><strong id="planner-state-title">Preparando seu espaço</strong><p id="qwen-status" role="status" aria-live="polite">Verificando a validação local…</p><p id="planner-resource-hint" class="planner-resource-hint" role="status" hidden></p></div>
+                  <button id="planner-use-ready" type="button" class="button primary" hidden>Usar IA aprovada</button>
+                </div>
+                <div class="planner-context"><label class="field-label" for="qwen-project">Contexto do projeto</label><select id="qwen-project"><option value="">Nova ideia — sem harness existente</option></select><p class="qwen-note">Escolha um harness para incluir seus Markdown na conversa.</p></div>
+                <div class="planner-context">
+                  <label class="field-label" for="brain-context-mode">Cérebro automático</label><select id="brain-context-mode"><option value="economic">Econômico · buscar só o necessário</option><option value="complete">Completo · todos os anexos do escopo</option></select>
+                  <p id="brain-context-summary" class="qwen-note" role="status" aria-live="polite">A IA consulta o contexto ao enviar. Sem chamada de modelo para fazer a busca.</p>
+                  <p id="brain-token-usage" class="qwen-note" role="status">Tokens usados: ainda não há geração nesta conversa.</p>
+                  <details id="brain-context-details"><summary>Fontes e detalhes técnicos · opcional</summary><p class="qwen-note">Markdown de controle e modos permanecem integrais. Econômico seleciona seções inteiras; Completo não corta arquivos. Contagem antes de enviar é estimada; uso reportado depois inclui instruções e histórico.</p><label class="field-label" for="brain-context-source">Ampliar a busca · opcional</label><select id="brain-context-source"><option value="">Somente referências anexadas ao harness</option></select><button id="brain-context-refresh" type="button" class="button subtle">Atualizar índice local</button><button id="brain-context-preview" type="button" class="button subtle">Conferir contexto sem chamar IA</button><div id="brain-context-sources"></div></details>
+                </div>
+                <section id="planner-empty" class="planner-empty" aria-label="Opções deste projeto"><p class="qwen-note">Ative para este projeto · aplicado ao contexto, sem preencher sua mensagem.</p><div class="planner-suggestions" aria-label="Preferências de planejamento"><button type="button" data-planner-option="interview" aria-pressed="false">Entrevista · Grill-me</button><button type="button" data-planner-option="organize" aria-pressed="false">Organizar agentes</button><button type="button" data-planner-option="review" aria-pressed="false">Revisar harness</button></div></section>
+                <div id="qwen-messages" class="qwen-messages" role="log" aria-label="Conversa com Qwen"></div>
+                <form id="qwen-form" class="qwen-form">
+                  <label class="field-label" for="qwen-prompt">Sua ideia</label>
+                  <textarea id="qwen-prompt" class="text-input" maxlength="4000" required placeholder="Quero criar um projeto que…"></textarea>
+                  <div class="qwen-actions planner-attachments"><button id="qwen-image" class="button subtle" type="button">＋ Anexar diagrama</button><span id="qwen-image-name">Nenhum diagrama</span><button id="qwen-clear" class="button subtle" type="button">Nova conversa</button></div>
+                  <div class="qwen-actions planner-send"><span class="qwen-note">A memória é conferida ao enviar.</span><button id="qwen-stop" class="button" type="button" disabled>Interromper Qwen</button><button id="qwen-send" class="button primary" type="submit" disabled>Planejar meu harness →</button></div>
+                </form>
+                <p id="qwen-metrics" class="qwen-note">Um worker local · teto de 3,9 GB na GPU inteira.</p>
+                <details class="planner-help"><summary>Como o planejador usa seu projeto</summary><p>Lê HARNESS.md, AGENTS.md, CONTEXT.md, BOARD.md, MEMORY.md e referências anexadas, sem cortes silenciosos. Até 6.000 caracteres de contexto; conversa, imagem e resposta devem caber em 2.048 tokens. Se exceder, o pedido é recusado, não resumido. Use Nova conversa ao trocar de projeto.</p><p>As respostas são propostas. Revise o plano e crie a missão em Meus projetos para executar. Imagens ficam nesta cópia local.</p></details>
+              </section>
+              <aside class="planner-models" aria-label="Escolher IA local"><div class="planner-models-heading"><span class="planner-eyebrow">MOTOR DO PLANEJADOR</span><h3>Sua IA local</h3><p>Use uma IA aprovada para começar. Instalação e testes ficam separados.</p></div><div id="model-cards" class="model-cards" aria-label="Modelos de inteligência artificial"></div><p class="qwen-note">Downloads e testes usam um worker. Acompanhe o andamento na barra inferior.</p></aside>
+            </div>
+          </div>
+        </section>
+        <section id="catalog-view">
+          <nav class="section-tabs" aria-label="Abas do catálogo"><button class="section-tab active" data-view="overview">Visão geral</button><button class="section-tab" data-view="mcp">Ferramentas MCP <span id="nav-mcp-count"></span></button><button class="section-tab" data-view="cli">Comandos CLI <span id="nav-cli-count"></span></button><button class="section-tab" data-view="library">Biblioteca</button><button class="section-tab" data-view="favorites">Favoritos</button></nav>
+          <div class="metrics" aria-label="Resumo do catálogo"><button class="metric accent" data-kind="mcp"><span class="metric-label">Ferramentas MCP <span>↗</span></span><strong id="metric-mcp">—</strong><small>Ferramentas do registro local</small></button><button class="metric" data-kind="cli"><span class="metric-label">Comandos CLI <span>›_</span></span><strong id="metric-cli">—</strong><small>Incluindo todos os subcomandos</small></button><button class="metric" data-kind="library"><span class="metric-label">Skills e agentes <span>▤</span></span><strong id="metric-library">—</strong><small>Instruções disponíveis na cópia</small></button><button class="metric" data-kind="plugin"><span class="metric-label">Plugins locais <span>◈</span></span><strong id="metric-plugin">—</strong><small>Manifestos, sem instalação automática</small></button></div>
+          <section class="catalog-panel" aria-label="Catálogo de funções">
+            <div class="panel-heading"><div><h2>Catálogo de funções <span id="total-count" class="count-badge">—</span></h2><p>Do código local para o seu painel. Nada simulado.</p></div><div><span id="catalog-date" class="subtle-label"></span> <button id="refresh-catalog" class="button subtle">Atualizar catálogo</button></div></div>
+            <div class="catalog-toolbar"><label class="search-field"><span aria-hidden="true">⌕</span><input id="search-input" type="search" placeholder="Buscar função, comando ou capacidade…" autocomplete="off" aria-label="Buscar funções"><kbd>Ctrl K</kbd></label><select id="kind-filter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option><option value="mcp">MCP</option><option value="cli">CLI</option><option value="skill">Skills</option><option value="agent">Agentes</option><option value="plugin">Plugins</option></select><select id="category-filter" aria-label="Filtrar por categoria"><option value="all">Todas as categorias</option></select></div>
+            <div class="list-context"><span id="results-count" aria-live="polite">Lendo o catálogo local…</span><span>Uma operação por vez <span class="local-dot"></span></span></div>
+            <div id="entry-list" class="entry-list" aria-label="Funções disponíveis"></div>
+            <div id="empty-state" class="empty-state" hidden><span>⌕</span><h3>Nenhuma função encontrada</h3><p>Tente outro termo ou limpe os filtros.</p><button id="reset-filters" class="button">Limpar filtros</button></div>
+            <footer class="pagination"><span id="pagination-label"></span><div><button id="previous-page" class="button subtle" aria-label="Página anterior">← Anterior</button><button id="next-page" class="button subtle" aria-label="Próxima página">Próxima →</button></div></footer>
+          </section>
+          <div class="catalog-note"><span>◇</span><p><strong>Revise e execute.</strong> Ações locais pedem confirmação com os parâmetros reais. Serviços, shell e configurações amplas ficam fora deste perfil. Registros de agentes não representam código executado.</p></div>
+        </section>
+        <section id="office-view" hidden></section>
+        <section id="tutorials-view" aria-label="Tutoriais do SanduBAH" hidden></section>
+        <nav id="settings-tabs" class="section-tabs" aria-label="Abas de configurações" hidden><button class="section-tab" data-view="connections">Conexões</button><button class="section-tab" data-view="development">Compilar e testar</button><button class="section-tab" data-view="activity">Atividade da sessão</button></nav>
+        <section id="connections-view" hidden></section>
+        <section id="development-view" class="development-view" hidden><div class="development-card"><span class="feature-icon">⌥</span><h2>Seu código. Seu próximo build.</h2><p>Compile a CLI diretamente com o TypeScript instalado nesta cópia. Sem npm global, sem baixar o Ruflo original.</p><code id="repository-path"></code><button id="build-cli" class="button primary">Compilar CLI local <span>→</span></button></div><div class="development-card"><span class="feature-icon">✓</span><h2>Teste com um worker.</h2><p>Escolha um arquivo da suíte local. Sem paralelismo de arquivos; o painel impede uma segunda execução simultânea.</p><label class="field-label" for="test-file-search">Encontrar arquivo</label><input id="test-file-search" class="text-input" placeholder="Ex.: parser.test.ts"><label class="field-label" for="test-file-select">Arquivo de testes</label><select id="test-file-select"></select><button id="run-test" class="button primary">Executar teste selecionado <span>→</span></button></div></section>
+        <section id="activity-view" class="activity-view" hidden><div class="panel-heading"><div><h2>O que aconteceu nesta sessão</h2><p>Somente operações iniciadas neste painel. Sem métricas inventadas.</p></div></div><div id="activity-list"></div></section>
+        <section id="output-panel" class="output-panel" hidden><div class="output-heading"><strong id="output-title">Resultado</strong><button id="close-output" class="icon-button" aria-label="Fechar resultado">×</button></div><pre id="output-content" tabindex="0"></pre></section>
+        <footer class="workspace-footer"><span>SanduBAH <span>·</span> MIT / Ruflo por ruvnet</span><span id="footer-source">Fonte: cópia local verificada</span></footer>
+      </main>
+    </div>
+    <aside id="detail-panel" class="detail-panel" aria-label="Detalhes da função" hidden><div class="detail-top"><span id="detail-kind" class="eyebrow"></span><button id="close-detail" class="icon-button" aria-label="Fechar detalhes">×</button></div><h2 id="detail-title"></h2><code id="detail-name"></code><p id="detail-description"></p><div id="detail-policy" class="policy-card"></div><div id="detail-source-path" class="source-path" hidden></div><div class="editor-heading"><h3>Parâmetros</h3><button id="toggle-json" class="text-button">Editar JSON</button></div><div id="parameter-form"></div><label id="json-label" class="field-label" for="arguments-json" hidden>Objeto JSON completo</label><textarea id="arguments-json" class="json-editor" spellcheck="false" hidden>{}</textarea><div id="detail-error" class="field-error" aria-live="polite"></div><div class="detail-actions"><button id="execute-entry" class="button primary">Executar função</button><button id="entry-help" class="button">Ver ajuda local</button><button id="view-source" class="button">Ver instruções</button><button id="copy-request" class="button subtle">Copiar chamada para revisão</button></div><div id="detail-examples"></div><div class="detail-footnote">Execução por MCP stdio da sua cópia. Nenhuma porta HTTP é aberta. A configuração do Codex e o gateway não são alterados.</div></aside>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <section id="task-drawer" class="task-drawer" aria-label="Fila de tarefas" hidden>
+    <div class="task-drawer-heading"><div><h2>Fila de tarefas</h2><p>Um worker · download → instalação → validação</p></div><button id="task-drawer-close" class="icon-button" aria-label="Fechar fila">×</button></div>
+    <div id="task-list"></div>
+  </section>
+  <div class="task-bar">
+    <section class="memory-section" aria-label="Memória disponível agora">
+      <div id="memory-bars" class="memory-bars"></div>
+      <p class="memory-note">Para iniciar Qwen: RAM livre ≥ 4 GiB + comprometível ≥ 6 GiB · VRAM: reserva inicial de 1,85 GB dentro do teto de 3,9 GB. Não garante execução. Atualiza a cada 5 s.</p>
+    </section>
+    <button id="task-bar-toggle" type="button" aria-expanded="false" aria-controls="task-drawer"><span><strong id="task-bar-title">Nenhuma tarefa em execução</strong><small id="task-bar-message">Clique para abrir a fila</small></span><span><b id="task-bar-count">0</b> na fila ▴</span></button>
+    <progress id="task-bar-progress" max="100" value="0" aria-label="Progresso da tarefa"></progress>
+  </div>
+</body>
+</html>

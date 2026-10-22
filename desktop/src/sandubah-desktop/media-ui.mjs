@@ -1,0 +1,19 @@
+export function createMediaPicker({api,container,scope,notify,onChange=()=>{}}){
+  let currentScope=typeof scope==='function'?scope():scope,items=[],busy=false;
+  const button=document.createElement('button');button.type='button';button.className='button subtle';button.textContent='＋ Fotos e vídeos';
+  const list=document.createElement('div');list.className='media-attachments';const note=document.createElement('small');note.className='qwen-note';note.textContent='Vídeos: até 8 quadros ao longo da duração; áudio não analisado.';container.append(button,list,note);
+  async function sample(asset){
+    const video=document.createElement('video');video.preload='auto';video.muted=true;video.crossOrigin='anonymous';video.src=asset.url;
+    const wait=event=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>{clean();reject(new Error('Não foi possível ler o vídeo. Use MP4 H.264 ou WebM.'));},20000);const clean=()=>{clearTimeout(timer);video.removeEventListener(event,done);video.removeEventListener('error',error);};const done=()=>{clean();resolve();};const error=()=>{clean();reject(new Error('Este vídeo não pode ser lido neste PC.'));};video.addEventListener(event,done,{once:true});video.addEventListener('error',error,{once:true});});
+    try{await wait('loadedmetadata');if(!Number.isFinite(video.duration)||video.duration<=0||video.duration>7200)throw new Error('Use vídeos com até duas horas.');
+      const canvas=document.createElement('canvas'),scale=Math.min(1,1280/Math.max(video.videoWidth,video.videoHeight));canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));const context=canvas.getContext('2d'),frames=[];
+      for(let index=0;index<8;index++){const at=Math.min(video.duration-.01,video.duration*(index+.5)/8),seeked=wait('seeked');video.currentTime=Math.max(0,at);await seeked;context.drawImage(video,0,0,canvas.width,canvas.height);frames.push({at:video.currentTime,data:canvas.toDataURL('image/jpeg',.8)});}
+      return await api.mediaFrames({id:asset.id,frames,duration:video.duration});
+    }finally{video.removeAttribute('src');video.load();}
+  }
+  function render(){list.replaceChildren();for(const asset of items){const chip=document.createElement('article');chip.className='media-chip';if(asset.kind==='image'){const image=document.createElement('img');image.src=asset.url;image.alt=asset.name;chip.append(image);}else{const video=document.createElement('video');video.src=asset.url;video.controls=true;video.preload='metadata';chip.append(video);}const name=document.createElement('span');name.textContent=asset.name;const summary=document.createElement('small');summary.textContent=asset.summary;const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='Remover';remove.disabled=busy;remove.onclick=async()=>{try{items=await api.mediaRemove({scope:currentScope,id:asset.id});render();onChange(items);}catch(error){notify(error.message,true);}};chip.append(name,summary,remove);list.append(chip);}button.disabled=busy;}
+  async function refresh(nextScope){currentScope=nextScope||(typeof scope==='function'?scope():scope);items=await api.mediaList(currentScope);render();onChange(items);return items;}
+  button.onclick=async()=>{if(busy)return;busy=true;render();try{const assets=await api.mediaChoose({scope:currentScope});for(const asset of assets){if(asset.kind==='video'){note.textContent='Preparando os quadros do vídeo…';await sample(asset);}}await refresh();}catch(error){notify(error.message,true);await refresh().catch(()=>{});}finally{busy=false;note.textContent='Vídeos: até 8 quadros ao longo da duração; áudio não analisado.';render();}};
+  refresh().catch(error=>notify(error.message,true));
+  return {refresh,scope:()=>currentScope,items:()=>items,setBusy(value){busy=value;render();}};
+}

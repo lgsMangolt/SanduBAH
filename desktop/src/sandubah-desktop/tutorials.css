@@ -1,0 +1,16 @@
+.tutorial-introduction{max-width:760px;color:#738064;font-size:12px;line-height:1.9;margin:0 0 22px}
+.tutorial-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);gap:12px}
+.tutorial-count{font-size:11px;color:#78856c;margin:14px 0}
+.tutorial-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.tutorial-card{min-width:0;background:#fff;border:1px solid #e0e5d9;border-radius:17px;padding:24px;align-self:start}
+.tutorial-category{display:inline-block;background:#edf2e5;border-radius:7px;padding:5px 9px;color:#748560;font-size:10px}
+.tutorial-card h2{font-size:17px;line-height:1.5;margin:13px 0 9px;color:#253328}
+.tutorial-description{font-size:12px;line-height:1.8;color:#78836f;margin:0 0 16px}
+.tutorial-steps{border-top:1px solid #e6eadf;padding:14px 0;font-size:12px;line-height:1.85}
+.tutorial-steps summary{cursor:pointer;color:#506846;font-weight:600}
+.tutorial-steps ol{padding-left:22px;margin:18px 0 0}
+.tutorial-steps li{padding-left:5px;margin:0 0 14px;color:#65765a;overflow-wrap:anywhere}
+.tutorial-card>.button{margin-top:10px}
+.tutorial-empty{padding:30px;border:1px dashed #d5ddcb;border-radius:14px;color:#768469;text-align:center;font-size:12px}
+@media(max-width:1000px){.tutorial-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:680px){.tutorial-toolbar{grid-template-columns:minmax(0,1fr)}.tutorial-card{padding:19px}}

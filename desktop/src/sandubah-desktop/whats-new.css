@@ -1,0 +1,23 @@
+.whats-new{box-sizing:border-box;width:min(650px,calc(100vw - 32px));max-height:calc(100dvh - 40px);padding:0;overflow:hidden;background:#fffefa;color:#29362c;border:1px solid #e1e5d9;border-radius:22px;box-shadow:0 24px 90px #1723182e}
+.whats-new[open]{display:flex;flex-direction:column}
+.whats-new::backdrop{background:#28382d55;backdrop-filter:blur(3px)}
+.whats-new-header{display:flex;gap:16px;align-items:center;padding:25px 28px 18px;flex-shrink:0}
+.whats-new-header img{width:54px;height:54px;object-fit:contain;image-rendering:pixelated}
+.whats-new-eyebrow{font-size:9px;letter-spacing:.15em;color:#7a886b;margin:0 0 7px}
+.whats-new h2{font-size:23px;line-height:1.3;margin:0}
+.whats-new-content{padding:0 28px 12px;overflow:auto;min-height:60px}
+.whats-new-date{font-size:10px;color:#859171}
+.whats-new-release{padding:4px 0 14px}
+.whats-new-release+.whats-new-release{border-top:1px solid #e4e9dc;padding-top:20px}
+.whats-new-release h3{font-size:16px;line-height:1.5;margin:8px 0 17px}
+.whats-new-release ul{list-style:none;padding:0;margin:0}
+.whats-new-release li{background:#f4f6ed;border-radius:11px;padding:12px 15px;margin:0 0 10px}
+.whats-new-release li strong{font-size:12px}
+.whats-new-release li p,.whats-new-warning{font-size:12px;line-height:1.8;color:#718163;margin:5px 0 0}
+.whats-new-release small{font-size:10px;color:#879276}
+.whats-new-update-mode{margin:0 28px;padding:14px 0;border-top:1px solid #e3e8dc;flex-shrink:0}
+.whats-new-update-mode strong{font-size:11px;color:#566b49}
+.whats-new-update-mode p{font-size:10px;line-height:1.7;color:#79876b;margin:6px 0 0}
+.whats-new-actions{display:flex;justify-content:flex-end;gap:10px;padding:18px 28px;background:#f6f8f1;border-top:1px solid #e3e8dc;flex-shrink:0}
+.whats-new-open{margin:0 0 20px}
+@media(max-width:680px){.whats-new-header{padding:20px 19px 16px}.whats-new h2{font-size:19px}.whats-new-header img{width:43px;height:43px}.whats-new-content{padding:0 19px 10px}.whats-new-update-mode{margin:0 19px}.whats-new-actions{padding:14px 19px}}

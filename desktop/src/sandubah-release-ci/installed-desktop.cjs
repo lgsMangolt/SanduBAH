@@ -1,0 +1,38 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {join,resolve,dirname}=require('node:path');
+const {createHash,verify}=require('node:crypto');
+const {createRequire}=require('node:module');
+if(process.env.GITHUB_ACTIONS!=='true'||process.env.RUNNER_ENVIRONMENT!=='github-hosted'||process.env.RUNNER_OS!=='Windows'||process.env.GITHUB_REPOSITORY!=='lgsMangolt/SanduBAH')throw new Error('This test may only run in the authorized GitHub-hosted Windows VM.');
+const mode=process.argv[2];assert.ok(['fresh','resume'].includes(mode));
+const appDirectory=resolve(process.env.SANDUBAH_INSTALLED_DIRECTORY||''),expectedDirectory=resolve(process.env.LOCALAPPDATA,'Programs/SanduBAH');assert.equal(appDirectory.toLowerCase(),expectedDirectory.toLowerCase());
+const {_electron:electron}=createRequire(join(process.env.SANDUBAH_TEST_TOOLS,'package.json'))('playwright-core');
+const root=join(process.env.LOCALAPPDATA,'SanduBAH/workspace'),resources=join(appDirectory,'resources'),fixtureFile=join(process.env.RUNNER_TEMP,'sandubah-lifecycle-fixture.json');
+const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+let application;const checks=[],errors=[];
+const log=message=>process.stderr.write(`VM app check: ${message}\n`);
+const deadline=setTimeout(()=>{log('Hard deadline reached; stopping only the test-owned application.');application?.process().kill();process.exit(1);},13*60*1000);deadline.unref();
+async function run(){
+  const environment={PATH:join(process.env.SystemRoot,'System32'),NODE_PATH:'',NODE_OPTIONS:''};for(const name of ['SystemRoot','WINDIR','COMSPEC','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])environment[name]=process.env[name];environment.HOME=environment.USERPROFILE;
+  const home=join(process.env.RUNNER_TEMP,'sandubah-empty-home');for(const directory of ['Documents','AppData/Roaming','AppData/Local'])fs.mkdirSync(join(home,directory),{recursive:true});environment.USERPROFILE=home;environment.HOME=home;environment.APPDATA=join(home,'AppData/Roaming');
+  log(`Starting the installed executable (${mode}).`);
+  application=await electron.launch({executablePath:join(appDirectory,'SanduBAH.exe'),args:['--disable-gpu'],cwd:appDirectory,env:environment,timeout:120000});application.process().stderr.on('data',bytes=>process.stderr.write(bytes));
+  await application.evaluate(({dialog})=>{const original=dialog.showErrorBox;dialog.showErrorBox=(title,content)=>{process.stderr.write(`Application startup error: ${title}: ${content}\n`);return original.call(dialog,title,content);};});
+  let page;for(let attempt=0;attempt<6000&&!page;attempt++){page=application.windows().find(window=>window.url().endsWith('/index.html'));if(!page&&attempt%300===0){for(const window of application.windows()){let text='';try{text=(await window.locator('body').innerText({timeout:5000})).slice(0,600);}catch{}log(JSON.stringify({url:window.url(),text}));}}if(!page)await new Promise(resolve=>setTimeout(resolve,100));}assert.ok(page,'Installed application did not open its real main panel.');page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(30000);log('Main panel opened.');
+  await page.waitForFunction(()=>['true','error'].includes(document.body.dataset.ready),null,{timeout:120000});assert.equal(await page.locator('body').getAttribute('data-ready'),'true',await page.locator('#load-error').textContent());
+  const initial=await page.evaluate(()=>window.sandubah.initialize());assert.equal(initial.status.connected,true,'Bundled stdio MCP must actually connect.');assert.equal(initial.protections.workerLimit,1);assert.equal(initial.updateCheckOnOpen,true);assert.equal(fs.realpathSync(initial.repositoryRoot),fs.realpathSync(root));checks.push('installed-app-opened','real-bundled-stdio-MCP','one-worker','normal-startup-update-check-enabled');
+  const runtime=JSON.parse(fs.readFileSync(join(root,'build/sandubah/gui/runtime.json'),'utf8'));assert.equal(runtime.distribution.installed,true);assert.equal(runtime.codexExecutable,'');assert.equal(fs.realpathSync(runtime.nodeExecutable),fs.realpathSync(join(resources,'node/node.exe')));assert.equal(initial.catalog.entries.every(entry=>['mcp','cli'].includes(entry.kind)),true);checks.push('no-external-node-or-original-checkout','no-bundled-user-account');
+  const publicConfig=JSON.parse(fs.readFileSync(join(resources,'update-public.json'),'utf8'));assert.equal(digest(Buffer.from(publicConfig.publicKey)),'91ab36c79db049506162973c12bbd41468e65d49a335d8dd7e9e4f65870c05fb');const downloads=process.env.SANDUBAH_VM_DOWNLOAD_DIRECTORY;const manifestBytes=fs.readFileSync(join(downloads,'SanduBAH-update.json')),manifest=JSON.parse(manifestBytes);assert.equal(verify(null,manifestBytes,publicConfig.publicKey,fs.readFileSync(join(downloads,'SanduBAH-update.sig'))),true);assert.equal(manifest.installer.sha256,process.env.SANDUBAH_EXPECTED_SHA256);checks.push('pinned-Ed25519-update-signature');
+  await page.waitForFunction(async()=>!['idle','checking'].includes((await window.sandubah.updatesStatus()).phase),null,{timeout:120000});const update=await page.evaluate(()=>window.sandubah.updatesStatus());assert.ok(update.checkedAt);assert.equal(fs.existsSync(join(root,'build/sandubah/gui/updates')),false);checks.push('automatic-public-check-without-download-or-install');
+  const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();await page.locator('.main-nav [data-view="tutorials"]').click();await page.locator('#desktop-updates').waitFor();assert.match(await page.locator('#desktop-updates').textContent(),/só baixa e instala depois de você confirmar/i);assert.equal(await page.locator('.tutorial-card').count(),9);checks.push('update-confirmations-explained-in-panel');
+  const projects=await page.evaluate(()=>window.sandubah.project({action:'list'}));
+  if(mode==='fresh'){
+    assert.deepEqual(projects,[]);checks.push('fresh-install-has-zero-personal-projects');
+    const project=await page.evaluate(()=>window.sandubah.project({action:'create',input:{name:'VM lifecycle example',goal:'Verify preservation of fictional test data only. Do not execute agents or external models.'}}));
+    const canary=join(root,'build/sandubah/gui/home/.codex/lifecycle-fixture.json');fs.mkdirSync(dirname(canary),{recursive:true});fs.writeFileSync(canary,JSON.stringify({fixture:'fictional-only',value:'not-a-real-credential'}));
+    const files=[join(root,'build/sandubah/gui/harnesses',project.id,'harness.json'),join(root,'build/sandubah/gui/harnesses',project.id,'HARNESS.md'),canary];fs.writeFileSync(fixtureFile,JSON.stringify({projectId:project.id,files:files.map(path=>({path,sha256:digest(fs.readFileSync(path))}))}));checks.push('fictional-project-and-credential-canary-created');
+  }else{const fixture=JSON.parse(fs.readFileSync(fixtureFile,'utf8'));assert.ok(projects.some(project=>project.id===fixture.projectId));for(const file of fixture.files)assert.equal(digest(fs.readFileSync(file.path)),file.sha256);checks.push('fictional-project-and-canary-preserved-after-installation-cycle');}
+  assert.deepEqual(errors,[]);log('Closing the application after successful checks.');await application.close();application=null;console.log(JSON.stringify({passed:true,mode,workerLimit:1,modelCalls:0,checks}));
+}
+run().then(()=>clearTimeout(deadline),error=>{console.error(error.stack);application?.process().kill();setTimeout(()=>process.exit(1),1000);});

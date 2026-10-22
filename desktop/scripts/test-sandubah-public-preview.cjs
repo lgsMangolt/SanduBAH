@@ -1,0 +1,47 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {readFileSync,writeFileSync,mkdirSync,mkdtempSync,realpathSync,rmSync}=require('node:fs');
+const {join,resolve,sep}=require('node:path');
+const {createHash}=require('node:crypto');
+const {verifyAudit}=require('./publish-sandubah-preview.cjs');
+const root=resolve(__dirname,'..'),build=join(root,'build/sandubah/gui'),runtime=require(join(build,'runtime.json'));
+const {_electron:electron}=require(join(build,'vendor/node_modules/playwright-core'));
+const digest=filename=>createHash('sha256').update(readFileSync(filename)).digest('hex');
+const protectedFiles=['.codex/config.toml','.claude/.credentials.json'].map(filename=>join(process.env.USERPROFILE,filename));
+const before=protectedFiles.map(digest),temporaryRoot=join(build,'tmp');mkdirSync(temporaryRoot,{recursive:true});
+const profile=mkdtempSync(join(temporaryRoot,'public-demo-'));let application;
+async function run(){
+  const audit=verifyAudit(),environment={...process.env,SANDUBAH_PUBLIC_TEST_FILE:join(root,'build/sandubah/public-preview/index.html'),SANDUBAH_PUBLIC_TEST_PROFILE:profile};delete environment.ELECTRON_RUN_AS_NODE;
+  application=await electron.launch({executablePath:runtime.electronExecutable,args:[join(root,'tests/regression/fixtures/sandubah-public-main.cjs'),'--disable-gpu'],env:environment,timeout:60000});
+  const page=await application.firstWindow();page.setDefaultTimeout(20000);const errors=[],external=[];
+  page.on('pageerror',error=>errors.push(error.message));page.on('request',request=>{if(!request.url().startsWith('file:'))external.push(request.url());});
+  await page.locator('#navigation [data-view="new"]').waitFor();await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].showInactive());
+  assert.equal(await page.evaluate(()=>typeof window.sandubah),'undefined');assert.equal(await page.evaluate(()=>typeof require),'undefined');
+  const download=page.getByRole('link',{name:'↓ Baixar SanduBAH para Windows',exact:true});assert.equal(await download.getAttribute('href'),'https://github.com/lgsMangolt/SanduBAH/releases/download/v0.1.0/SanduBAH-Setup-0.1.0-x64.exe');assert.equal(await download.getAttribute('target'),'_blank');assert.match(await download.getAttribute('rel'),/noopener/);
+  await page.getByRole('link',{name:'Como instalar e conectar minha IA',exact:true}).click();await page.locator('[data-install-provider="codex"]').waitFor();assert.match(await page.locator('#title').textContent(),/primeira conversa/);assert.equal(await page.locator('[data-install-provider]').count(),2);
+  assert.equal(await page.locator('[data-install-provider="codex"] a').getAttribute('href'),'https://learn.chatgpt.com/docs/codex/cli');assert.equal(await page.locator('[data-install-provider="claude"] a').getAttribute('href'),'https://code.claude.com/docs/en/setup');assert.match(await page.locator('#content').textContent(),/Configurações → Conexões → Verificar conexões/);assert.match(await page.locator('#content').textContent(),/mensagens e Markdown selecionados serão enviados/);assert.equal(await page.locator('input[type="password"],input[type="file"]').count(),0);
+  await page.getByText('Ver soluções sem mexer nas suas configurações',{exact:true}).click();assert.match(await page.locator('#content').textContent(),/caminhos personalizados podem não ser reconhecidos/);await page.screenshot({path:join(build,'public-preview-install-desktop.png'),fullPage:true});await page.locator('#navigation [data-view="new"]').click();
+  await page.getByRole('button',{name:'Experimentar o fluxo →',exact:true}).click();await page.locator('#cancel').click();assert.equal(await page.locator('#confirm').isVisible(),false);
+  await page.getByRole('button',{name:'Experimentar o fluxo →',exact:true}).click();await page.locator('#approve').click();await page.getByText('Exemplo de fluxo concluído.',{exact:false}).waitFor();
+  await page.locator('.preview-card [data-tab="stages"]').click();assert.match(await page.locator('.preview-card .product-checklist').textContent(),/Produto · MVP · a iniciar/);
+  assert.match(await page.locator('.preview-card').textContent(),/Missões · execução ilustrativa separada do produto/);assert.match(await page.locator('.preview-card [data-product-phase="MVP"]').textContent(),/MVP · 0\/12/);
+  await page.locator('#navigation [data-view="projects"]').click();await page.locator('.project-card').first().waitFor();assert.equal(await page.locator('.project-card').count(),3);
+  const aurora=page.locator('.project-card').filter({has:page.getByRole('heading',{name:'Aurora',exact:true})});
+  assert.match(await aurora.textContent(),/2\/4 missões de exemplo · não é conclusão do produto/);
+  await aurora.getByRole('button',{name:'Etapas e checklist',exact:true}).click();await aurora.locator('[data-product-phase="MVP"] summary').click();
+  assert.equal(await aurora.locator('[data-product-phase="MVP"] li').count(),12);assert.match(await aurora.locator('[data-product-phase="MVP"]').textContent(),/backup e restauração/);assert.match(await aurora.locator('[data-product-phase="MVP"]').textContent(),/Permissões/);assert.match(await aurora.locator('[data-product-phase="MVP"]').textContent(),/WhatsApp/);
+  await page.getByRole('searchbox',{name:'Buscar nos projetos de exemplo'}).fill('Atlas');assert.equal(await page.locator('.project-card:visible').count(),1);
+  await page.getByRole('button',{name:'Abrir projeto',exact:true}).filter({visible:true}).click();assert.equal(await page.getByRole('combobox',{name:'Projeto de demonstração'}).inputValue(),'atlas');
+  await page.locator('#navigation [data-view="tutorials"]').click();await page.getByRole('searchbox',{name:'Buscar tutoriais'}).waitFor();assert.equal(await page.locator('[data-tutorial]').count(),9);
+  await page.getByRole('searchbox',{name:'Buscar tutoriais'}).fill('instalar');assert.equal(await page.locator('[data-tutorial]:visible').count(),1);await page.getByRole('button',{name:'Abrir área do guia',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>location.hash==='#install');await page.locator('#navigation [data-view="tutorials"]').click();
+  await page.getByRole('searchbox',{name:'Buscar tutoriais'}).fill('economico');assert.equal(await page.locator('[data-tutorial]:visible').count(),1);await page.locator('[data-tutorial]:visible summary').click();assert.match(await page.locator('[data-tutorial]:visible').textContent(),/não há busca nos seus arquivos/);
+  await page.getByRole('button',{name:'Abrir área do guia',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>location.hash==='#brain');
+  for(const view of ['catalog','brain','office','install','settings']){await page.locator(`#navigation [data-view="${view}"]`).click();assert.ok((await page.locator('#title').textContent()).length>10);}
+  await page.locator('#navigation [data-view="office"]').click();await page.getByRole('button',{name:'2D · leve',exact:true}).click();await page.locator('.office-scene.flat').waitFor();assert.equal(await page.locator('.office-scene.flat').count(),1);
+  const windowId=await page.evaluate(()=>location.href);await application.evaluate(({BrowserWindow},url)=>{const window=BrowserWindow.getAllWindows().find(candidate=>candidate.webContents.getURL()===url);window.setMinimumSize(300,400);window.setSize(430,900);},windowId);
+  for(const view of ['new','projects','catalog','brain','office','tutorials','settings','install']){await page.locator(`#navigation [data-view="${view}"]`).click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}await page.screenshot({path:join(build,'public-preview-install-mobile.png'),fullPage:true});
+  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);assert.deepEqual(protectedFiles.map(digest),before);verifyAudit();
+  const receipt={passed:true,validatedAt:new Date().toISOString(),workerLimit:1,modelCalls:0,publicDemoTested:true,publicDemoMobile430:true,onlyFictitiousProjects:true,networkRequests:0,checks:['sandbox-without-ipc','official-installer-link-without-download','provider-installation-and-login-guides','no-credential-form','confirmation-retained','simulated-flow','separate-product-and-missions','mvp-twelve-pending-criteria','project-search-and-continuity','tutorial-search-and-navigation','all-navigation','office-2d','mobile-all-views','protected-config-unchanged'],publicPreviewHashes:Object.fromEntries(audit.files.map(entry=>[entry.path,entry.sha256]))};
+  writeFileSync(join(build,'public-preview-validation.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt));
+}
+run().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(application)await application.close();assert.ok(realpathSync(profile).startsWith(realpathSync(temporaryRoot)+sep));rmSync(profile,{recursive:true,force:true});assert.deepEqual(protectedFiles.map(digest),before);});
