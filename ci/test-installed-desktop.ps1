@@ -35,6 +35,7 @@ function Get-RegisteredUninstaller($Entry) {
     return $filename
 }
 function Invoke-Installer {
+    Write-Host 'Starting the actual per-user NSIS installer.'
     $process = Start-Process -FilePath $script:installer -ArgumentList @('/S','/currentuser') -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(240000)) { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue; throw 'Installer timed out.' }
     if ($process.ExitCode -ne 0) { throw "Installer failed with code $($process.ExitCode)." }
@@ -51,6 +52,7 @@ function Assert-Canaries {
     $checks.Add('project-and-fictional-credential-canaries-preserved')
 }
 function Invoke-Uninstaller {
+    Write-Host 'Starting the actual registered uninstaller.'
     $entry = Get-ProductEntry
     $uninstaller = Get-RegisteredUninstaller $entry
     $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S','/currentuser') -WindowStyle Hidden -PassThru
@@ -63,6 +65,7 @@ function Invoke-Uninstaller {
     Assert-Canaries
 }
 function Invoke-AppCheck([string]$Mode) {
+    Write-Host "Checking the installed application: $Mode."
     $savedToken = $env:GH_TOKEN
     try { Remove-Item Env:/GH_TOKEN; $output = & node (Join-Path $PSScriptRoot 'installed-desktop.cjs') $Mode; $exitCode = $LASTEXITCODE } finally { $env:GH_TOKEN = $savedToken }
     if ($exitCode -ne 0) { throw "Installed application check failed: $Mode." }
@@ -76,6 +79,7 @@ try {
     $release = (Invoke-GitHub -Arguments @('api',"repos/$repository/releases/$ReleaseId")) | ConvertFrom-Json
     if (-not $release.draft -or $release.tag_name -ne 'v0.1.0') { throw 'Only the expected draft release can be validated.' }
     $stage = 'download-and-hash'
+    Write-Host 'Downloading and verifying the audited draft assets.'
     New-Item -ItemType Directory -Path $downloadDirectory | Out-Null
     Invoke-GitHub -Arguments @('release','download','v0.1.0','--repo',$repository,'--pattern','SanduBAH-Setup-0.1.0-x64.exe','--pattern','SanduBAH-update.json','--pattern','SanduBAH-update.sig','--pattern','SanduBAH-test-controller.zip','--dir',$downloadDirectory) | Out-Null
     $controller = Join-Path $downloadDirectory 'SanduBAH-test-controller.zip'
