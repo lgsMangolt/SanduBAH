@@ -26,14 +26,23 @@ function Get-ProductEntry {
     if ($entries.Count -eq 1) { return $entries[0] }
     return $null
 }
+function Get-RegisteredUninstaller($Entry) {
+    if ($null -eq $Entry) { throw 'Per-user uninstall registration was not created.' }
+    $match = [regex]::Match([string]$Entry.UninstallString, '^"([^"]+)"')
+    if (-not $match.Success) { throw 'Uninstaller command is invalid.' }
+    $filename = [IO.Path]::GetFullPath($match.Groups[1].Value)
+    if ([IO.Path]::GetDirectoryName($filename) -ne $appDirectory -or [IO.Path]::GetFileName($filename) -ne 'Uninstall SanduBAH.exe') { throw 'Uninstall target is outside the expected application directory.' }
+    return $filename
+}
 function Invoke-Installer {
     $process = Start-Process -FilePath $script:installer -ArgumentList @('/S','/currentuser') -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(240000)) { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue; throw 'Installer timed out.' }
     if ($process.ExitCode -ne 0) { throw "Installer failed with code $($process.ExitCode)." }
     if (-not (Test-Path -LiteralPath (Join-Path $appDirectory 'SanduBAH.exe'))) { throw 'Installed executable is missing.' }
     $entry = Get-ProductEntry
-    if ($null -eq $entry) { throw 'Per-user uninstall registration was not created.' }
-    if ([IO.Path]::GetFullPath($entry.InstallLocation).TrimEnd('\') -ne $appDirectory.TrimEnd('\')) { throw 'Unexpected install directory.' }
+    $uninstaller = Get-RegisteredUninstaller $entry
+    if (-not (Test-Path -LiteralPath $uninstaller)) { throw 'Registered uninstaller was not installed.' }
+    if ($entry.InstallLocation -and [IO.Path]::GetFullPath($entry.InstallLocation).TrimEnd('\') -ne $appDirectory.TrimEnd('\')) { throw 'Unexpected install directory.' }
     $checks.Add('real-NSIS-install-and-HKCU-registration')
 }
 function Assert-Canaries {
@@ -43,9 +52,7 @@ function Assert-Canaries {
 }
 function Invoke-Uninstaller {
     $entry = Get-ProductEntry
-    if ($null -eq $entry -or $entry.UninstallString -notmatch '^"([^"]+)"') { throw 'Validated uninstaller entry is missing.' }
-    $uninstaller = [IO.Path]::GetFullPath($Matches[1])
-    if ([IO.Path]::GetDirectoryName($uninstaller) -ne $appDirectory -or [IO.Path]::GetFileName($uninstaller) -ne 'Uninstall SanduBAH.exe') { throw 'Uninstall target is outside the expected application directory.' }
+    $uninstaller = Get-RegisteredUninstaller $entry
     $process = Start-Process -FilePath $uninstaller -ArgumentList @('/S','/currentuser') -WindowStyle Hidden -PassThru
     if (-not $process.WaitForExit(120000)) { Stop-Process -Id $process.Id -ErrorAction SilentlyContinue; throw 'Uninstaller timed out.' }
     if ($process.ExitCode -ne 0) { throw "Uninstaller failed with code $($process.ExitCode)." }
