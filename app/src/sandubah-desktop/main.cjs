@@ -268,7 +268,7 @@ function createWindow() {
   });
   handle('sandubah:handoff',async payload=>{
     const project=controller.projects.get(payload.id);
-    const text=`Projeto SanduBAH: ${project.name}\nObjetivo: ${project.goal}\nHarness local: ${controller.projects.location(project.id)}\nUse apenas esta cópia local de Ruflo. Um worker. Não altere gateway ou configurações globais.\n\nPapéis e missões:\n${JSON.stringify({agents:project.agents,missions:project.missions.map(({title,tool,status})=>({title,tool,status}))},null,2)}\n\nContexto de referência:${controller.projects.context(project,{})}`;
+    const text=`Projeto SanduBAH: ${project.name}\nObjetivo: ${project.goal}\nHarness local: ${controller.projects.location(project.id)}\nUse apenas o motor local desta cópia; não baixe os pacotes ruflo ou claude-flow da rede. Um worker. Não altere gateway ou configurações globais.\n\nPapéis e missões:\n${JSON.stringify({agents:project.agents,missions:project.missions.map(({title,tool,status})=>({title,tool,status}))},null,2)}\n\nContexto de referência:${controller.projects.context(project,{})}`;
     await clipboard.writeText(text);return {copied:true};
   });
   handle('sandubah:copy-request',async payload=>{

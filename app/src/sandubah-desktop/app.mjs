@@ -10,6 +10,7 @@ import {createTutorials} from './tutorials.mjs';
 import {createWhatsNew} from './whats-new.mjs';
 import {createUpdates} from './updates.mjs';
 import {createGauchos} from './gaucho.mjs';
+import {layoutStore,panelControls,heightHandle} from './panels.mjs';
 
 const api=window.sandubah;
 createPlanningReview(api);
@@ -39,7 +40,7 @@ function setView(view){
   byId('page-title').textContent=view==='planner'?'Seu próximo projeto começa aqui.':titles[view]||shortTitles[view];
   byId('breadcrumb-view').textContent=view==='planner'?'Novo projeto':shortTitles[view]||view;
   const library='Skills, agentes e plugins disponíveis na sua cópia, para ler antes de usar.';
-  const subtitles={all:'Explore as funções reais do seu Ruflo. Inspecione, prepare e execute com controle.',mcp:'Ferramentas do MCP local: consultas rodam direto, ações pedem confirmação e o que sai do escopo fica bloqueado.',cli:'Comandos e subcomandos da CLI da sua cópia, com a sintaxe real.',library,plugin:library,skill:library,agent:library,favorites:'As funções que você marcou com estrela, num só lugar.',development:'Build e testes usando apenas os arquivos e dependências da sua cópia.',activity:'As operações desta sessão, na ordem em que aconteceram.',connections:'O que está instalado e conectado: MCP local, Codex e Claude.',brain:'Seus Markdown conectados. Escolha o que entra no contexto e veja as fontes usadas.',office:'Os papéis de cada projeto e o andamento das missões, um worker por vez.',harness:'O projeto aberto: missões, contexto conectado e arquivos do workspace.',planner:'Converse sobre a ideia, conecte os Markdown do projeto e organize o trabalho dos agentes.',projects:'Os projetos conhecidos pelo seu Cérebro, com progresso, recomendações e acesso ao trabalho.',tutorials:'Guias práticos para planejar, construir e acompanhar seus projetos no SanduBAH.',gauchos:'Agentes que você cria do zero e ensina conversando, corrigindo e dando uma base própria.'};
+  const subtitles={all:'Explore as funções reais do motor local. Inspecione, prepare e execute com controle.',mcp:'Ferramentas do MCP local: consultas rodam direto, ações pedem confirmação e o que sai do escopo fica bloqueado.',cli:'Comandos e subcomandos da CLI da sua cópia, com a sintaxe real.',library,plugin:library,skill:library,agent:library,favorites:'As funções que você marcou com estrela, num só lugar.',development:'Build e testes usando apenas os arquivos e dependências da sua cópia.',activity:'As operações desta sessão, na ordem em que aconteceram.',connections:'O que está instalado e conectado: MCP local, Codex e Claude.',brain:'Seus Markdown conectados. Escolha o que entra no contexto e veja as fontes usadas.',office:'Os papéis de cada projeto e o andamento das missões, um worker por vez.',harness:'O projeto aberto: missões, contexto conectado e arquivos do workspace.',planner:'Converse sobre a ideia, conecte os Markdown do projeto e organize o trabalho dos agentes.',projects:'Os projetos conhecidos pelo seu Cérebro, com progresso, recomendações e acesso ao trabalho.',tutorials:'Guias práticos para planejar, construir e acompanhar seus projetos no SanduBAH.',gauchos:'Agentes que você cria do zero e ensina conversando, corrigindo e dando uma base própria.'};
   byId('page-subtitle').textContent=subtitles[view]||subtitles.all;
   if(view==='office'){byId('page-title').textContent='Seu time, no mesmo lugar.';byId('breadcrumb-view').textContent='Escritório';}
   if(view==='connections')byId('page-title').textContent='Conecte o que faz sentido para você.';
@@ -188,6 +189,7 @@ async function initialize(){
     if(!api)throw new Error('Abra este painel pelo SanduBAH.exe. A ponte local não está disponível neste navegador.');
     const initial=await api.initialize();state.catalog=initial.catalog;state.tests=initial.tests;
     dock=createProjectDock({api,notify:showToast});createNotices({api,navigate:setView});
+    const drawer=byId('task-drawer');heightHandle({target:drawer,store:()=>layoutStore('global'),key:'drawerHeight',edge:'top',min:200,max:()=>window.innerHeight-200,label:'Ajustar a altura da fila'}).restore();panelControls(drawer,{id:'drawer',title:'Fila de tarefas',store:layoutStore('global'),host:drawer.querySelector('.task-drawer-heading')});
     world=createWorld({api,catalog:state.catalog,notify:showToast,output:setOutput,navigate:setView});
     planner=createPlanner({api,notify:showToast});
     office=createOffice({api,container:byId('office-view'),onContinue:id=>world.continueProject(id)});

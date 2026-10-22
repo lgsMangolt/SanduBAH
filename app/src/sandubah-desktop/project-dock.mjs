@@ -1,4 +1,5 @@
 import {createLifecycleEditor} from './product-lifecycle.mjs';
+import {layoutStore,panelControls,columnSplitter,heightHandle} from './panels.mjs';
 export function createProjectDock({api,notify}){
   const main=document.getElementById('main-content'),body=document.createElement('div');body.className='workbench-body';main.before(body);body.append(main);
   const dock=document.createElement('aside');dock.className='project-dock';dock.id='project-dock';dock.hidden=true;dock.setAttribute('aria-label','Prévia do projeto');body.append(dock);
@@ -18,10 +19,15 @@ export function createProjectDock({api,notify}){
     }catch(error){if(selectedProject===projectId&&revision===request)source.postMessage({type:'sandubah:preview-data-result',requestId:message.requestId,ok:false,error:error.message},'*');}
   });
   const refresh=document.createElement('button');refresh.type='button';refresh.className='button subtle';refresh.textContent='Atualizar prévia';refresh.onclick=()=>load(true);tabs.append(refresh);stage.append(frame,files,code,progress);dock.append(heading,tabs,status,stage);
+  // Largura e altura da prévia ficam guardadas por projeto; maximizar e recolher valem para a prévia inteira.
+  const layout={get:(name,fallback)=>layoutStore(projectId?'project:'+projectId:'global').get(name,fallback),set:(name,value)=>layoutStore(projectId?'project:'+projectId:'global').set(name,value)};
+  const splitter=columnSplitter({container:body,target:dock,store:()=>layout});
+  const frameHeight=heightHandle({target:frame,store:()=>layout,key:'previewHeight',min:240,label:'Ajustar a altura da prévia'});
+  panelControls(dock,{id:'dock',title:'Prévia do projeto',store:layoutStore('global'),host:heading});
   async function file(){if(!files.value)return;try{code.textContent=(await api.previewFile({id:projectId,path:files.value})).content;}catch(error){code.textContent=error.message;}}
   files.onchange=file;
   async function load(force=false){
-    if(!projectId)return;const revision=++request,selectedProject=projectId;
+    if(!projectId)return;splitter.restore();frameHeight.restore();const revision=++request,selectedProject=projectId;
     try{
       const loaded=await api.preview(selectedProject);if(revision!==request||selectedProject!==projectId)return;
       snapshot=loaded;title.textContent=loaded.name;status.textContent=loaded.entry?'Prévia dos arquivos locais · isolada do aplicativo':'A prévia aparece assim que o agente criar index.html. Você pode acompanhar os arquivos e etapas.';

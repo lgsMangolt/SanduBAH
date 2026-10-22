@@ -4,6 +4,7 @@ import {createBrainHub} from './brain-hub.mjs';
 import {missionDraft,executorChoices} from './harness-executors.mjs';
 import {createProjectTrack} from './project-track.mjs';
 import {createProjectHistory} from './project-history.mjs';
+import {layoutStore,panelControls} from './panels.mjs';
 
 const node=(tag,className,text)=>{const value=document.createElement(tag);if(className)value.className=className;if(text!==undefined)value.textContent=text;return value;};
 const button=(text,action,className='button')=>{const value=node('button',className,text);value.type='button';value.addEventListener('click',action);return value;};
@@ -192,7 +193,7 @@ export function createWorld({api,catalog,notify,output,navigate}){
     const progress=node('div','quest-progress');progress.append(node('strong','',current.name),node('span','',`${completed} / ${current.missions.length} missões concluídas · 1 worker`));
     const meter=node('progress');meter.max=Math.max(1,current.missions.length);meter.value=completed;meter.setAttribute('aria-label','Missões concluídas');progress.append(meter,node('p','',current.goal));projectBody.append(progress);
     const projectId=current.id;
-    projectBody.append(createProjectTrack({api,projectId,run,notify,isBusy:()=>busy,onProjectChanged:async()=>{current=await api.project({action:'get',id:projectId});renderProject();},openPrompt:async path=>{navigate('brain');await openDocument(path,projectId);}}));
+    const track=createProjectTrack({api,projectId,run,notify,isBusy:()=>busy,onProjectChanged:async()=>{current=await api.project({action:'get',id:projectId});renderProject();},openPrompt:async path=>{navigate('brain');await openDocument(path,projectId);}});projectBody.append(track);
     const actions=node('div','world-toolbar');
     const play=button('▶ Revisar e executar fila',run(()=>executeQueue()),'button primary');play.id='run-queue';play.disabled=busy||!current.missions.some(mission=>mission.status==='pending');
     const stop=button('■ Parar após esta missão',run(async()=>{const result=await api.stopQueue();notify(result.message);}));stop.disabled=!busy;stop.id='stop-queue';
@@ -201,9 +202,9 @@ export function createWorld({api,catalog,notify,output,navigate}){
     const files=node('div','project-docs');
     for(const file of ['HARNESS.md','AGENTS.md','CONTEXT.md','BOARD.md','MEMORY.md'])files.append(button(file,run(async()=>{navigate('brain');await openDocument(file,current.id);}),'document-chip'));
     projectBody.append(files);
-    const columns=node('div','harness-columns');const team=node('section','world-card');team.append(node('h3','','Sua equipe'),node('p','muted','O Ruflo registra os papéis. O Codex executa código e testes em um workspace privado, um agente por vez.'));
+    const columns=node('div','harness-columns');const team=node('section','world-card');team.append(node('h3','','Sua equipe'),node('p','muted','O motor local registra os papéis. O Codex executa código e testes em um workspace privado, um agente por vez.'));
     for(const agent of current.agents){
-      const card=node('div','agent-card');card.append(node('span','pixel-avatar',agent.name.slice(0,2).toUpperCase()),node('strong','',agent.name),node('small','',`${agent.role} · ${agent.registered?'registrado no Ruflo':'pronto para registrar'}`));
+      const card=node('div','agent-card');card.append(node('span','pixel-avatar',agent.name.slice(0,2).toUpperCase()),node('strong','',agent.name),node('small','',`${agent.role} · ${agent.registered?'registrado no motor local':'pronto para registrar'}`));
       if(agent.source)card.append(button('Ler instruções',run(async()=>{navigate('brain');await openDocument(agent.source);}),'text-button'));
       team.append(card);
     }
@@ -262,10 +263,13 @@ export function createWorld({api,catalog,notify,output,navigate}){
     projectBody.append(live);renderWorkerArea(undefined,false);
     const results=node('section','world-card');results.id='artifact-list';results.append(node('h3','','Arquivos do workspace'),node('p','muted','Resultados novos ficam no workspace privado. Arquivos importados podem ser aplicados à cópia, com backup e proteção contra conflitos.'),button('Atualizar arquivos',run(()=>showArtifacts(results,current.id))));projectBody.append(results);run(()=>showArtifacts(results,current.id))();
     const restore=node('section','world-card');restore.id='checkpoint-list';restore.append(node('h3','','Checkpoints aplicados'),node('p','muted','Cada aplicação guarda o conteúdo anterior. Restaurar exige revisão do diff e confirmação; se o arquivo mudou fora do SanduBAH, nada é sobrescrito.'),button('Atualizar checkpoints',run(()=>showCheckpoints(restore,current.id))));projectBody.append(restore);run(()=>showCheckpoints(restore,current.id))();
-    projectBody.append(createProjectHistory({api,projectId,run,notify,output,isBusy:()=>busy}));
+    const history=createProjectHistory({api,projectId,run,notify,output,isBusy:()=>busy});projectBody.append(history);
     const context=node('div','world-card');context.append(node('h3','',`Contexto conectado · ${current.context.length} Markdown`),node('p','muted','HARNESS.md, MEMORY.md, documentos conectados, papel do agente e resultados anteriores são lidos novamente a cada missão Codex. Nada para copiar manualmente.'));
     for(const sourcePath of current.context)context.append(button(sourcePath,run(async()=>{navigate('brain');await openDocument(sourcePath);}),'document-chip'));
     context.append(button('◉ Explorar e conectar Markdown',()=>navigate('brain'),'button'));projectBody.append(context);
+    // Cada painel do projeto pode ser recolhido ou maximizado; o que fica recolhido é lembrado por projeto.
+    const layout=layoutStore('project:'+projectId);
+    for(const [element,id,title] of [[track,'track','Trilha do projeto'],[team,'team','Sua equipe'],[missionPanel,'mission','Nova missão'],[board,'board','Quadro de missões'],[live,'worker','Agente trabalhando'],[results,'files','Arquivos do workspace'],[restore,'checkpoints','Checkpoints aplicados'],[history,'history','Histórico de versões'],[context,'context','Contexto conectado']])panelControls(element,{id,title,store:layout});
   }
   async function showArtifacts(container,id){
     const files=await api.artifacts(id);if(current?.id!==id||!container.isConnected)return;

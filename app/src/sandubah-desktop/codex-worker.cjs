@@ -47,7 +47,7 @@ class CodexWorker {
   async run({workspace,runDirectory,prompt,images=[],onEvent=()=>{},settings=codexSettings(),sandbox='workspace-write'}) {
     if(this.child)throw new Error('O worker Codex já está em execução.');
     if(!this.codexHome||this.codexHome.toLowerCase()===settings.home.toLowerCase())throw new Error('O executor exige perfil privado, separado do Codex global.');
-    if(!existsSync(this.runtime.codexExecutable))throw new Error('Codex local não encontrado. Atualize o runtime local, sem instalar Ruflo da rede.');
+    if(!existsSync(this.runtime.codexExecutable))throw new Error('Codex local não encontrado. Atualize o runtime local, sem instalar pacotes da rede.');
     this.cancelled=false;
     const args=workerArguments({workspace,outputPath:join(runDirectory,'last-message.txt'),settings,sandbox});
     if(!Array.isArray(images)||images.length>16)throw new Error('Use até 16 imagens por execução.');

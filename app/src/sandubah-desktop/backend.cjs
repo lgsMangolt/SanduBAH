@@ -70,7 +70,7 @@ function assertSafeArguments(value, depth = 0) {
 function policyFor(entry) {
   if (entry.kind !== 'mcp') return { mode: 'inspect', label: entry.kind === 'cli' ? 'Ajuda local' : 'Biblioteca local', reason: 'Consulte o conteúdo e prepare uma chamada, sem executar código automaticamente.' };
   if (READ_TOOLS.has(entry.name)) return { mode: 'read', label: 'Consulta local', reason: 'Consulta auditada. O motor registra sua trilha de política dentro do ambiente isolado da cópia.' };
-  if (canRunLocally(entry.name)) return { mode:'confirm', label:'Confirmar execução', reason:'Executa a ferramenta da cópia local após confirmação dos parâmetros e do projeto. A política original do Ruflo continua valendo.' };
+  if (canRunLocally(entry.name)) return { mode:'confirm', label:'Confirmar execução', reason:'Executa a ferramenta da cópia local após confirmação dos parâmetros e do projeto. A política original do motor local continua valendo.' };
   return { mode:'blocked', label:'Fora do escopo local', reason:'Esta função controla shell, provedores, serviços, navegador, instalações ou configuração/importação ampla. Consulte e copie a chamada para revisão; esta interface preserva o gateway e as configurações existentes.' };
 }
 
