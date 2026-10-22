@@ -1,0 +1,22 @@
+{
+  "name": "sandubah",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ambiente desktop para planejar projetos com agentes de IA (Codex e Claude) sem perder o contexto.",
+  "type": "module",
+  "license": "MIT",
+  "author": "lgsMangolt (https://github.com/lgsMangolt)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lgsMangolt/SanduBAH.git"
+  },
+  "homepage": "https://lgsmangolt.github.io/SanduBAH/",
+  "keywords": ["electron", "ai-agents", "mcp", "claude", "codex", "nodejs"],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "npx --yes serve@14 . -l 3000",
+    "test": "node --test tests/*.test.mjs"
+  }
+}

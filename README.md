@@ -1,94 +1,134 @@
 # 🥪 SanduBAH
 
-**App desktop para planejar projetos de software com agentes de IA (Codex e Claude) sem perder o contexto do projeto, com confirmação humana antes de cada ação.**
+**Um ambiente desktop para planejar projetos com agentes de IA (Codex e Claude) sem perder o contexto.**
 
-> **In English:** SanduBAH is a Windows desktop app (Electron + Node.js) that lets developers plan and run software projects with AI coding agents (OpenAI Codex CLI, Claude Code) while keeping project context in Markdown and requiring explicit human approval before any data is sent to a model or any change is applied. Stack: Electron · Node.js · MCP · PowerShell · GitHub Actions. [Live demo](https://lgsmangolt.github.io/SanduBAH/) · [Windows installer 0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)
+> 🇺🇸 **In English:** SanduBAH is a Windows desktop app (Electron + Node.js) that lets developers plan projects with AI agents (OpenAI Codex and Anthropic Claude via their official CLIs and a local MCP server), keep project knowledge in linked Markdown, and approve every action before it runs. [Live demo](https://lgsmangolt.github.io/SanduBAH/) · [Download v0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)
 
-[![Validação do site](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-site-journey.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-site-journey.yml)
-[![Validação do instalador](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-desktop-release.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/sandubah-desktop-release.yml)
+[![Testes](https://github.com/lgsMangolt/SanduBAH/actions/workflows/test.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/test.yml)
+![Status](https://img.shields.io/badge/status-pr%C3%A9via%20experimental-orange)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows%20x64-blue)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
 
+<!-- TODO: gravar um GIF de 10–20s do app em uso, salvar em assets/demo.gif e trocar a imagem abaixo -->
 ![Escritório do SanduBAH em pixel art, onde os papéis dos agentes aparecem](assets/office.png)
 
-**[▶ Abrir a demonstração web](https://lgsmangolt.github.io/SanduBAH/)** · **[↓ Instalador Windows x64 0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/download/v0.1.0/SanduBAH-Setup-0.1.0-x64.exe)** (≈ 508 MiB, [SHA-256 e relatório da VM](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0))
+**[▶ Abrir a demonstração online](https://lgsmangolt.github.io/SanduBAH/)** · **[↓ Baixar para Windows (v0.1.0)](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)**
+
+---
+
+## O problema
+
+Quem programa com agentes de IA perde o fio rápido: o contexto do projeto fica espalhado em conversas, o agente esquece decisões anteriores e é difícil saber o que ele vai executar antes de executar.
+
+O SanduBAH organiza isso em um só lugar:
+
+- **Planejamento com IA:** você descreve a ideia e o agente (Codex ou Claude) ajuda a quebrar em etapas, sempre com confirmação antes de enviar qualquer dado.
+- **Cérebro:** uma base de conhecimento em Markdown conectado, que dá ao agente o contexto do projeto.
+- **Etapas do produto:** Planejamento → Protótipo → MVP → Produção, separadas das tarefas, para que terminar uma tarefa não seja confundido com produto pronto.
+- **Você no controle:** nada é enviado ao modelo, executado ou instalado sem a sua confirmação.
 
 ## Stack
 
-**Electron 44** · **Node.js 24** · **MCP** (servidor local por stdio, via [Ruflo](https://github.com/ruvnet/ruflo)) · **PowerShell / C#** (launcher e build Windows) · **Playwright** (testes de interface) · **GitHub Actions** (instalador testado em VM Windows limpa) · Python (experimental, modelos locais)
-
-## O que ele faz
-
-**Principal**
-
-- **Planejamento com agentes:** você descreve a ideia e escolhe Codex ou Claude, o modelo e a força de raciocínio. Antes de qualquer chamada, o app mostra exatamente o que será enviado.
-- **Execução isolada:** o Codex trabalha num workspace privado por projeto. O resultado só chega à sua cópia depois de revisão, com backup e detecção de conflito.
-- **Contexto persistente:** cada projeto (harness) guarda objetivo, equipe, missões e memória em arquivos Markdown, que são relidos a cada missão.
-- **Fila serial:** só um worker por vez, sem repetição automática. A fila para no primeiro erro.
-
-**Experimental**
-
-- **Cérebro:** busca seletiva nos seus Markdown, que mostra as fontes usadas e separa tokens estimados dos tokens informados pelo provedor.
-- **Grill-me:** entrevista que questiona a ideia antes de planejar.
-- **Escritório:** visualização em pixel art dos papéis dos agentes.
-- **Referência jurídica:** consulta seletiva de normas por jurisdição, com a indicação de confirmar na fonte oficial.
-- **Modelos locais (Qwen/AirLLM):** síntese local sem executar comandos.
+| Camada | Tecnologias |
+| --- | --- |
+| Aplicativo desktop | Electron, Node.js (CommonJS + ES Modules), HTML/CSS |
+| Integração com IA | Codex CLI, Claude Code CLI, servidor MCP local via stdio |
+| Modelos locais (experimental) | Python, Qwen, AirLLM |
+| Build e distribuição | electron-builder, PowerShell, instalador Windows x64 com SHA-256 |
+| Testes e CI | `node:test`, Playwright, GitHub Actions com VM Windows limpa |
 
 ## Rodar em 2 minutos
 
-**Demonstração web.** É estática, sem dependências, login ou chamadas de API:
+Requer [Node.js 22+](https://nodejs.org/).
 
 ```bash
 git clone https://github.com/lgsMangolt/SanduBAH.git
 cd SanduBAH
-python -m http.server 8000   # depois abra http://localhost:8000
+npm test     # testes da demonstração web, sem dependências
+npm start    # abre a demonstração em http://localhost:3000 (baixa o pacote serve na primeira vez)
 ```
 
-Também funciona abrindo `index.html` direto no navegador. Os projetos e resultados exibidos são fictícios.
+Sem Node, também funciona abrindo `index.html` direto no navegador.
 
-**App desktop.** Use o [instalador](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) e siga o [tutorial interativo para instalar e conectar Codex ou Claude](https://lgsmangolt.github.io/SanduBAH/#install). Cada pessoa usa a própria CLI oficial e a própria conta.
-
-**Código do desktop.** Fica em [`desktop/`](desktop/README.md) e hoje é um *overlay* sobre o Ruflo. Ainda não roda sozinho a partir deste clone: montar o ambiente reproduzível com um único comando está no roadmap.
+Para o aplicativo completo, use o [instalador da Release](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) ou veja [como trabalhar no código desktop](desktop/README.md).
 
 ## Arquitetura
 
 ```mermaid
 flowchart LR
-  UI["Interface<br/>index.html · world.mjs · planner.mjs"] -->|"contextBridge (sandbox)"| P["preload.cjs"]
-  P -->|IPC| M["main.cjs<br/>janela, IPC, diálogos de confirmação"]
-  M --> B["backend.cjs<br/>DesktopController: fila serial, políticas"]
-  B --> W["workspace.cjs<br/>harness em Markdown, workspace privado, aplicar com backup"]
-  B --> CP["cloud-planner.cjs<br/>planejamento via CLIs Codex / Claude"]
-  B --> CW["codex-worker.cjs<br/>codex exec no workspace"]
-  B --> MCP["MCP Ruflo (stdio)<br/>memória e coordenação"]
-  B --> K["knowledge.cjs<br/>Cérebro: busca seletiva com fontes"]
+    UI["Interface<br/>(renderer)"] -->|IPC via preload| Main["Processo principal<br/>(Electron)"]
+    Main --> Backend["Backend<br/>planejador, workspaces, Cérebro"]
+    Backend -->|confirmação do usuário| CLIs["CLIs oficiais<br/>Codex · Claude"]
+    Backend <-->|stdio| MCP["Servidor MCP local<br/>(Ruflo)"]
+    CLIs --> WS
+    Backend --> Brain[("Cérebro<br/>Markdown conectado")]
+    Backend --> WS[("Workspaces<br/>privados")]
 ```
 
-O renderer não tem acesso ao Node (`contextIsolation`, `sandbox`, `nodeIntegration: false`). Toda ação com efeito colateral passa pelo processo principal e por uma confirmação nativa.
+O backend conversa com o servidor MCP local. As CLIs rodam com MCP, plugins e hooks desativados, e o Codex trabalha só dentro do workspace privado do projeto.
+
+<!-- TODO: criar ARCHITECTURE.md com suas palavras e linkar aqui -->
 
 ## Decisões técnicas e desafios
 
-- **Confirmação antes de enviar dados ao modelo.** Contexto privado e cota são do usuário. Por isso o app exibe a mensagem e os Markdown selecionados antes da chamada. Se o contexto passar do limite, a chamada é bloqueada em vez de ter o texto cortado sem aviso.
-- **O resultado do agente nunca sobrescreve sua cópia diretamente.** O Codex escreve num workspace separado. Para aplicar, o app compara o hash SHA-256 da origem com o do momento da preparação, recusa se outra pessoa ou agente alterou o arquivo e guarda um backup.
-- **Um worker por vez.** Rodar agentes em série evita dois escritores no mesmo arquivo e torna cada resultado rastreável. Uma interrupção vira estado "desconhecido" e nunca é repetida automaticamente.
-- **Instalador testado em VM limpa.** Um workflow do GitHub Actions instala, abre, reinstala e desinstala o app numa VM Windows Server 2025 nova, com dados fictícios, e verifica que os dados do usuário são preservados.
-- **Testes de regressão.** Mais de 200 testes com `node:test`, executados em série, cobrem caminhos maliciosos (UNC, ADS, hardlinks, `..`), manifestos adulterados, conflitos, cancelamentos e a fila.
+- **Confirmação antes de qualquer envio.** Nenhuma mensagem, arquivo ou comando chega ao modelo sem aprovação explícita. Isso evita gasto de cota inesperado e vazamento de dados do projeto.
+- **CLIs oficiais em vez de chaves de API.** Cada pessoa usa a própria conta do Codex ou do Claude. Para isolar as execuções, o app copia a sessão da CLI para um perfil local privado. Nada é enviado a servidores do SanduBAH.
+- **Um worker por vez.** Limitar a execução a um agente simultâneo deixa o comportamento previsível e mais fácil de acompanhar.
+- **Instalador testado em VM limpa.** Um workflow do GitHub Actions instala, reinstala e desinstala o app em um Windows Server 2025 novo, com dados fictícios, para verificar que o pacote não depende da minha máquina. É um ambiente de teste, não uma garantia para todas as versões do Windows.
+- **Demonstração web sem rede.** A prévia pública tem uma Content-Security-Policy que bloqueia qualquer requisição externa, e um teste automatizado garante isso.
 
-## Roadmap
+<!-- TODO: troque ou complete com os desafios que VOCÊ enfrentou — é isso que o recrutador quer ler -->
 
-- Ambiente de desenvolvimento reproduzível a partir de um clone (fork do Ruflo ou script de setup com commit fixado).
-- Checkpoints por missão, com diff e restauração confirmada.
-- Gates de qualidade determinísticos, com evidências de testes e artefatos.
-- Nova Release do instalador. Os fontes em `desktop/` são posteriores à 0.1.0, e publicar fontes não atualiza o instalador.
+## Funcionalidades
 
-O estado detalhado está em [`desktop/CLAUDE.md`](desktop/CLAUDE.md).
+**Principal**
+
+- Novo projeto com planejamento guiado por IA
+- Meus projetos, com busca e continuidade
+- Cérebro: base de conhecimento em Markdown
+- Etapas do produto e checklist de MVP
+- Conexões com Codex e Claude
+
+**Experimental**
+
+- Escritório em pixel art com os agentes representados
+- Modelos locais (Qwen/AirLLM) e preparação de fine-tuning
+- Skill de consulta jurídica
+
+Veja o que vem pela frente no [ROADMAP](ROADMAP.md).
+
+## Estrutura do repositório
+
+```text
+index.html, app.mjs, style.css   demonstração web (GitHub Pages)
+tests/                           testes da demonstração (npm test)
+desktop/                         código do app desktop (overlay sobre o Ruflo)
+  src/sandubah-desktop/          interface e processo principal
+  scripts/                       build, instalador e MCP
+  tests/                         testes de regressão
+ci/, .github/workflows/          testes da demonstração e validação em VM Windows limpa
+ROADMAP.md                       pendências
+```
 
 ## Privacidade e segurança
 
-A demonstração web não usa analytics, formulários, fontes remotas nem chamadas de API. O app desktop é uma prévia experimental, ainda sem certificado Authenticode. Ele não inclui CLIs, contas, chaves ou modelos, e verifica atualizações só com a sua confirmação. Para vulnerabilidades, veja [`SECURITY.md`](SECURITY.md). Não publique tokens, logs ou dados de clientes em issues.
+- O código do SanduBAH não envia telemetria. A demonstração web não faz nenhuma requisição de rede.
+- O login é feito nas CLIs oficiais. O SanduBAH copia a sessão só para um perfil local privado, nunca a publica ou envia a terceiros.
+- Os dados do usuário ficam separados do programa e são preservados em reinstalações.
+- O instalador ainda não tem assinatura de código do Windows. Confira o SHA-256 na Release antes de instalar.
 
-## Créditos e licença
+Mais detalhes em [SECURITY.md](SECURITY.md).
 
-Construído sobre o [Ruflo, de ruvnet](https://github.com/ruvnet/ruflo) (MIT), cuja licença é preservada em [`LICENSE`](LICENSE). Este não é um release oficial do Ruflo. Os nomes dos provedores pertencem aos respectivos titulares, sem afiliação implícita.
+## Créditos
 
-Desenvolvido com auxílio de Claude e Codex; arquitetura, decisões e validação são minhas.
+O app desktop é construído sobre o [Ruflo](https://github.com/ruvnet/ruflo) (MIT). Desenvolvido com auxílio de Claude e Codex; arquitetura, decisões e validação são minhas.
 
-**Uma etapa verificável por vez. Bah.**
+## Autor
+
+**lgsMangolt** · [GitHub](https://github.com/lgsMangolt)
+
+<!-- TODO: adicionar nome e LinkedIn -->
+
+## Licença
+
+MIT. Veja [LICENSE](LICENSE).
