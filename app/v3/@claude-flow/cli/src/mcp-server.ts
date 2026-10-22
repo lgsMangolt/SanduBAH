@@ -144,18 +144,22 @@ const BOOT_ID = ((): string | undefined => {
   }
 })();
 
-/**
- * A token that changes when a PID is handed to a different process: the
- * owner's start time.
- *
- * Linux reports it in /proc/<pid>/stat field 22 as clock ticks since boot,
- * which is durable together with BOOT_ID above. Elsewhere `ps -o lstart=`
- * reports an absolute wall-clock time, durable on its own. Returns undefined
- * where neither exists — on Windows, so PID reuse stays unqualified there,
- * exactly as isProcessRunning()'s process-name check already is.
- */
+function windowsProcessIdentity(pid: number): { name: string; start: string } | undefined {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return undefined;
+  try {
+    const executable = path.join(process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const result = execFileSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
+      '$owner = Get-Process -Id ([int][Console]::In.ReadLine()) -ErrorAction Stop; [Console]::Out.WriteLine($owner.ProcessName); [Console]::Out.WriteLine($owner.StartTime.ToUniversalTime().Ticks)'], {
+      input: `${pid}\n`, encoding: 'utf8', timeout: 5000, windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim().split(/\r?\n/);
+    if (result.length !== 2 || !/^\d+$/.test(result[1])) return undefined;
+    return { name: result[0], start: result[1] };
+  } catch { return undefined; }
+}
+
 function processStartToken(pid: number): string | undefined {
   if (!Number.isInteger(pid) || pid <= 0) return undefined;
+  if (process.platform === 'win32') return windowsProcessIdentity(pid)?.start;
   // DA-CRIT-3: validate the PID numerically and pass it as an argv entry,
   // never interpolated into a shell string.
   const safePid = String(Math.floor(pid));
@@ -1232,8 +1236,6 @@ export class MCPServerManager extends EventEmitter {
    *    because /tmp commonly survives a reboot;
    *  - within one boot the OS reuses a PID once the process is reaped, and the
    *    owner's start time is what tells the two apart.
-   * Where the start time cannot be read — Windows — the answer falls back to
-   * isProcessRunning(), i.e. exactly the evidence used today.
    */
   private recordedServerIsLive(record: PidFileRecord): boolean {
     const { pid, identity } = record;
@@ -1291,10 +1293,16 @@ export class MCPServerManager extends EventEmitter {
    * which causes false positives when the OS recycles the PID.
    */
   private isProcessRunning(pid: number): boolean {
+    if (!Number.isSafeInteger(pid) || pid <= 0) return false;
     try {
       process.kill(pid, 0);
     } catch {
       return false;
+    }
+
+    if (process.platform === 'win32') {
+      const identity = windowsProcessIdentity(pid);
+      return !!identity && /^(node|claude-flow|npx)(?:\.exe)?$/i.test(identity.name);
     }
 
     // Verify it's actually a node process (guards against PID reuse)
@@ -1320,7 +1328,6 @@ export class MCPServerManager extends EventEmitter {
       // Must be a node process to be our MCP server
       return cmdline.includes('node') || cmdline.includes('claude-flow') || cmdline.includes('npx');
     } catch {
-      // If we can't inspect the process (macOS, Windows, permissions), fall back to kill check
       return true;
     }
   }

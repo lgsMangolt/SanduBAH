@@ -9,7 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, symlinkSync } from 'fs';
+import { createFileLinkFixture as symlinkSync } from '../helpers/file-link-fixture.js';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { RepoSupervisorRegistry, SUPERVISOR_STALE_MS } from '../../src/services/repo-supervisor.js';
@@ -140,8 +141,11 @@ describe('#2661 root-fix — RepoSupervisorRegistry', () => {
     const real = join(dir, 'evil.json');
     writeFileSync(real, JSON.stringify({ worktreeRoot: '/x', pid: 1, electedAt: 0, lastHeartbeat: 0 }));
     symlinkSync(real, join(supDir, 'repo-1.json'));
+    const before = readFileSync(real);
 
     const result = await registry.electOrRenew('repo-1', '/tmp/wt-1');
     expect(result.isSupervisor).toBe(false); // fails closed, never overwrites/uses a symlinked path
+    expect(readFileSync(real)).toEqual(before);
+    expect(readFileSync(join(supDir, 'repo-1.json'))).toEqual(before);
   });
 });

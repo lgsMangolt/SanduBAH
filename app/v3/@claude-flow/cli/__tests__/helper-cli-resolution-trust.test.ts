@@ -88,10 +88,10 @@ describe('statusline.cjs resolves the CLI from its install root', () => {
   const source = resolve(here, '../.claude/helpers/statusline.cjs');
   // An empty PATH keeps the npx fallback from running; the bin candidates are
   // launched through process.execPath, so they still run if selected.
-  const render = (helper: string, home: string, project: string, emptyBin: string) =>
+  const render = (helper: string, home: string, project: string, emptyBin: string, environment: NodeJS.ProcessEnv = {}) =>
     spawnSync(process.execPath, [helper], {
       cwd: project,
-      env: { HOME: home, USERPROFILE: home, CLAUDE_PROJECT_DIR: project, PATH: emptyBin },
+      env: { ...process.env, HOME: home, USERPROFILE: home, CLAUDE_PROJECT_DIR: project, PATH: emptyBin, ...environment },
       input: '{}',
       encoding: 'utf8',
       timeout: 30_000,
@@ -124,7 +124,7 @@ describe('statusline.cjs resolves the CLI from its install root', () => {
     const home = join(root, 'home');
     const injected = join(root, 'injected');
     // The checkout's directory name is chosen by whoever made it.
-    const project = join(root, `p$(/usr/bin/touch ${injected})`);
+    const project = join(root, process.platform === 'win32' ? 'p%RUFLO_TRUST_INJECT%' : `p$(/usr/bin/touch ${injected})`);
     const emptyBin = join(root, 'empty-bin');
     mkdirSync(emptyBin);
     mkdirSync(home, { recursive: true });
@@ -132,7 +132,7 @@ describe('statusline.cjs resolves the CLI from its install root', () => {
     const helper = join(project, '.claude', 'helpers', 'statusline.cjs');
     mkdirSync(dirname(helper), { recursive: true });
     copyFileSync(source, helper);
-    render(helper, home, project, emptyBin);
+    render(helper, home, project, emptyBin, { RUFLO_TRUST_INJECT: `" & mkdir "${injected}" & rem "` });
     expect(existsSync(injected)).toBe(false);
   });
 });
@@ -159,7 +159,7 @@ describe('ruflo-hook.cjs plugin shims', () => {
       const { root, home } = fixture();
       const absBin = join(root, 'abs-bin');
       mkdirSync(absBin);
-      const rufloAbs = join(absBin, 'ruflo');
+      const rufloAbs = join(absBin, process.platform === 'win32' ? 'ruflo.cmd' : 'ruflo');
       writeFileSync(rufloAbs, '#!/bin/sh\n');
       chmodSync(rufloAbs, 0o755);
 
@@ -167,7 +167,7 @@ describe('ruflo-hook.cjs plugin shims', () => {
       // (posix and win32 forms); an absolute entry still resolves.
       expect(shim.resolveCommandPath('ruflo', { PATH: `.${':'}relative-dir` }, 'linux')).toBeNull();
       expect(shim.resolveCommandPath('ruflo', { PATH: `.;relative-dir`, PATHEXT: '.CMD' }, 'win32')).toBeNull();
-      expect(shim.resolveCommandPath('ruflo', { PATH: `.:${absBin}` }, 'linux')).toBe(rufloAbs);
+      expect(shim.resolveCommandPath('ruflo', { PATH: ['.', absBin].join(process.platform === 'win32' ? ';' : ':'), PATHEXT: '.CMD' }, process.platform)).toBe(rufloAbs);
 
       expect(shim.npxPrefix?.({ CLAUDE_PLUGIN_DATA: '/plugin/data' })).toBe('/plugin/data');
       expect(shim.npxPrefix?.({ HOME: home })).toBeTypeOf('string');

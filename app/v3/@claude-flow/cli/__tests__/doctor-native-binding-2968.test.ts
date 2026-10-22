@@ -11,6 +11,14 @@ import { join } from 'node:path';
 // Automatic module mocks remain consistent across concurrent dynamic imports;
 // a manual factory can be bypassed while doctor's parallel probes resolve it.
 vi.mock('better-sqlite3');
+vi.mock('child_process', async importOriginal => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  const exec = vi.fn();
+  Object.defineProperty(exec, Symbol.for('nodejs.util.promisify.custom'), {
+    value: async () => { throw Object.assign(new Error('External probes unavailable in native-binding fixture'), { code: 'ENOENT' }); },
+  });
+  return { ...actual, exec };
+});
 import Database from 'better-sqlite3';
 
 import { doctorCommand } from '../src/commands/doctor.js';

@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import {
-  copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync,
+  copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -44,7 +44,9 @@ function fixture(generate: () => string | null, source: string | null) {
 }
 
 function run(f: ReturnType<typeof fixture>, ...args: string[]) {
-  const result = spawnSync(process.execPath, [f.helper, ...args], {
+  const preload = join(f.root, 'file-link-preload.cjs');
+  const nodeArgs = existsSync(preload) ? ['--require', preload, f.helper, ...args] : [f.helper, ...args];
+  const result = spawnSync(process.execPath, nodeArgs, {
     cwd: f.project,
     env: { ...process.env, HOME: f.home, USERPROFILE: f.home, APPDATA: f.home },
     encoding: 'utf8',
@@ -86,19 +88,38 @@ describe('session helper keeps writes inside the project session dir', () => {
         const original = JSON.stringify({ id: 'session-1', startedAt: new Date().toISOString(), metrics: { edits: 0 } });
         writeFileSync(target, original);
         mkdirSync(f.sessions, { recursive: true });
-        symlinkSync(target, join(f.sessions, 'current.json'));
+        const current = join(f.sessions, 'current.json');
+        const marker = join(f.root, 'unexpected-link-read');
+        if (process.platform === 'win32') {
+          linkSync(target, current);
+          writeFileSync(join(f.root, 'file-link-preload.cjs'), `
+const fs = require('node:fs');
+const originalLstat = fs.lstatSync;
+const originalRead = fs.readFileSync;
+const linked = ${JSON.stringify(current)};
+fs.lstatSync = function(file, ...args) {
+  const stats = originalLstat.call(this, file, ...args);
+  return file === linked ? Object.assign(Object.create(stats), { isSymbolicLink: () => true, isFile: () => false }) : stats;
+};
+fs.readFileSync = function(file, ...args) {
+  if (file === linked) fs.writeFileSync(${JSON.stringify(marker)}, 'read');
+  return originalRead.call(this, file, ...args);
+};
+`);
+        } else symlinkSync(target, current);
 
-        run(f, 'restore');
-        run(f, 'end');
+        expect(run(f, 'restore').status).toBe(0);
+        expect(run(f, 'end').status).toBe(0);
 
         expect(readFileSync(target, 'utf8')).toBe(original);
+        expect(existsSync(marker)).toBe(false);
         expect(readdirSync(f.outside)).toEqual(['target.json']);
       });
 
       it('refuses a session directory that resolves outside the project', () => {
         const f = fixture(generate, source);
         mkdirSync(join(f.project, '.claude-flow'), { recursive: true });
-        symlinkSync(f.outside, f.sessions, 'dir');
+        symlinkSync(f.outside, f.sessions, process.platform === 'win32' ? 'junction' : 'dir');
 
         run(f, 'start');
 
@@ -107,7 +128,7 @@ describe('session helper keeps writes inside the project session dir', () => {
 
       it('creates nothing outside the project when .claude-flow is a symlink', () => {
         const f = fixture(generate, source);
-        symlinkSync(f.outside, join(f.project, '.claude-flow'), 'dir');
+        symlinkSync(f.outside, join(f.project, '.claude-flow'), process.platform === 'win32' ? 'junction' : 'dir');
 
         run(f, 'start');
 

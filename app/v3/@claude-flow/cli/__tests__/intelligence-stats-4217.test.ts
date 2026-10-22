@@ -92,7 +92,7 @@ function run(mode: string, root: string) {
 }
 function read(root: string) { return JSON.parse(readFileSync(statsPath(root), 'utf8')); }
 async function until(check: () => boolean) {
-  const deadline = Date.now() + 15000;
+  const deadline = Date.now() + (process.platform === 'win32' ? 45000 : 15000);
   while (!check()) {
     if (Date.now() > deadline) throw new Error('worker barrier timed out');
     await new Promise(resolve => setTimeout(resolve, 5));
@@ -107,7 +107,7 @@ function childExit(child: ReturnType<typeof spawn>) {
     timedOut = true;
     child.kill('SIGTERM');
     forced = setTimeout(() => child.kill('SIGKILL'), 50);
-  }, 12000);
+  }, process.platform === 'win32' ? 60000 : 12000);
   const ended = new Promise<void>((resolve, reject) => {
     const clear = () => { clearTimeout(timer); if (forced) clearTimeout(forced); };
     child.once('error', error => { clear(); reject(error); });
@@ -146,7 +146,7 @@ describe('cooperating process learning stats transactions (#4217)', () => {
       for (const { child } of children) if (child.exitCode === null) child.kill();
       await Promise.allSettled(children.map(child => child.ended));
     }
-  }, 30000);
+  }, process.platform === 'win32' ? 90000 : 30000);
   it('refuses an old held lock and retries pending increments exactly once', () => {
     const initial = '{"signalsProcessed":10}';
     const root = project('held', initial);

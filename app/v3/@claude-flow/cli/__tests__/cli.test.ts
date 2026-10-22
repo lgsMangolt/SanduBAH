@@ -46,14 +46,14 @@ describe('CLI', () => {
       await cli.run(['--version']);
 
       const output = consoleOutput.join('');
-      expect(output).toContain(VERSION);
+      expect(output).toBe(`SanduBAH v${VERSION}\n`);
     });
 
     it('should show version with -V flag', async () => {
       await cli.run(['-V']);
 
       const output = consoleOutput.join('');
-      expect(output).toContain(VERSION);
+      expect(output).toBe(`SanduBAH v${VERSION}\n`);
     });
 
     it('should show version with correct format', async () => {
@@ -61,6 +61,14 @@ describe('CLI', () => {
 
       const output = consoleOutput.join('');
       expect(output).toMatch(/v\d+\.\d+\.\d+/);
+    });
+
+    it('should preserve an explicitly configured CLI name and version', async () => {
+      const customCli = new CLI({ name: 'custom-cli', version: '9.8.7', interactive: false });
+
+      await customCli.run(['--version']);
+
+      expect(consoleOutput.join('')).toBe('custom-cli v9.8.7\n');
     });
   });
 
@@ -78,8 +86,24 @@ describe('CLI', () => {
       await cli.run(['--help']);
 
       const output = consoleOutput.join('');
+      expect(output).toContain(`SanduBAH v${VERSION}`);
+      expect(output).toContain('SanduBAH V3 - AI Agent Orchestration Platform');
+      expect(output).toContain('SanduBAH <command> [subcommand] [options]');
+      expect(output).toContain('SanduBAH mcp start');
       expect(output).toContain('USAGE:');
       expect(output).toContain('COMMANDS:');
+    });
+
+    it('should preserve explicitly configured branding in help', async () => {
+      const customCli = new CLI({ name: 'custom-cli', description: 'Custom platform', version: '9.8.7', interactive: false });
+
+      await customCli.run(['--help', '--no-update']);
+
+      const output = consoleOutput.join('');
+      expect(output).toContain('custom-cli v9.8.7');
+      expect(output).toContain('Custom platform');
+      expect(output).toContain('custom-cli <command> [subcommand] [options]');
+      expect(output).not.toContain('SanduBAH');
     });
 
     it('should show help with -h flag', async () => {

@@ -243,7 +243,7 @@ export function shouldSuppressInitLog(msg: string): boolean {
  * Returns null if @claude-flow/memory is not available.
  */
 async function getRegistry(dbPath?: string): Promise<any | null> {
-  if (shouldDisableNativeBridge()) return null;
+  if (process.env.CLAUDE_FLOW_DISABLE_BRIDGE === '1' || (!testRegistryOverride && !testRegistryFactory && shouldDisableNativeBridge())) return null;
   if (testRegistryOverride) return testRegistryOverride;
 
   // Resolve before caching: relative, absolute and symlink paths to one file
@@ -2297,7 +2297,7 @@ export async function getControllerRegistry(dbPath?: string): Promise<any | null
  * operator learns the cause instead of only the symptom.
  */
 export function getBridgeFailureReason(dbPath?: string): string | null {
-  if (shouldDisableNativeBridge()) {
+  if (process.env.CLAUDE_FLOW_DISABLE_BRIDGE === '1' || (!testRegistryOverride && !testRegistryFactory && shouldDisableNativeBridge())) {
     return process.platform === 'win32'
       ? 'AgentDB native bridge disabled on Windows after #3024; set CLAUDE_FLOW_ENABLE_NATIVE_BRIDGE_ON_WINDOWS=1 to opt in'
       : 'AgentDB native bridge disabled by CLAUDE_FLOW_DISABLE_BRIDGE=1';

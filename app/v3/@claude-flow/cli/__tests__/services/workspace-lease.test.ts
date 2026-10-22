@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
+import { createFileLinkFixture as symlinkSync } from '../helpers/file-link-fixture.js';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { WorkspaceLeaseRegistry, LEASE_TTL_MS } from '../../src/services/workspace-lease.js';
@@ -119,9 +120,12 @@ describe('#2661 root-fix — WorkspaceLeaseRegistry', () => {
     const real = join(dir, 'evil.json');
     writeFileSync(real, JSON.stringify({ version: 1, leases: {} }));
     symlinkSync(real, join(leasesDir, 'repo-1.json'));
+      const before = readFileSync(real);
 
     // heartbeat() is best-effort and must not throw even though the write
     // path refuses the symlinked target.
     await expect(registry.heartbeat('repo-1', '/tmp/wt-1')).resolves.toBeUndefined();
+      expect(readFileSync(real)).toEqual(before);
+      expect(readFileSync(join(leasesDir, 'repo-1.json'))).toEqual(before);
   });
 });

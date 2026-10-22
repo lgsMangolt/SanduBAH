@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
+import { resolveNpmLaunch } from '../src/runtime/browser-command.js';
 
 const PKG = 'ruflo-script-probe-3557';
 const state: { tarball: string } = { tarball: '' };
@@ -41,12 +42,15 @@ describe('#3557 install scripts are skipped for untrusted plugins', () => {
         name: PKG,
         version: '1.0.0',
         scripts: {
-          postinstall: `node -e "require('fs').writeFileSync('${sentinel}', 'ran')"`,
+          postinstall: 'node install.cjs',
         },
         'claude-flow': { trustLevel: 'untrusted', permissions: ['shell:exec'], hooks: ['pre-task'] },
       }),
     );
-    const out = execFileSync('npm', ['pack', '--pack-destination', work, '--ignore-scripts', '--json'], {
+    fs.writeFileSync(path.join(src, 'install.cjs'), `require('fs').writeFileSync(${JSON.stringify(sentinel)}, 'ran');\n`);
+    const launch = resolveNpmLaunch();
+    if (!launch) throw new Error('npm is required by the installation trust regression');
+    const out = execFileSync(launch.command, [...launch.argsPrefix, 'pack', '--pack-destination', work, '--ignore-scripts', '--json'], {
       cwd: src,
       encoding: 'utf-8',
     });

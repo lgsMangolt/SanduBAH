@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import {
   CATALOG_RELATIVE_PATH,
   INIT_COMMAND_CATEGORIES,
@@ -217,7 +217,7 @@ describe('repository gates', () => {
           const f = join(d, n);
           if (n === 'node_modules') continue;
           if (statSync(f).isDirectory()) walk(f);
-          else if (f.includes('/commands/') && n.endsWith('.md')) out.set(f, createHash('sha256').update(readFileSync(f)).digest('hex'));
+          else if (f.includes(`${sep}commands${sep}`) && n.endsWith('.md')) out.set(f, createHash('sha256').update(readFileSync(f)).digest('hex'));
         }
       };
       for (const d of dirs) walk(join(REPO_ROOT, d));

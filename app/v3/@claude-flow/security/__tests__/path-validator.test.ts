@@ -21,7 +21,7 @@ import {
 
 describe('PathValidator', () => {
   let validator: PathValidator;
-  const projectRoot = '/workspaces/project';
+  const projectRoot = path.resolve('/workspaces/project');
 
   beforeEach(() => {
     validator = new PathValidator({
@@ -43,7 +43,7 @@ describe('PathValidator', () => {
       });
 
       const prefixes = relativeValidator.getAllowedPrefixes();
-      expect(prefixes[0]).toMatch(/^\//);
+      expect(path.isAbsolute(prefixes[0])).toBe(true);
     });
   });
 
@@ -112,7 +112,7 @@ describe('PathValidator', () => {
 
     it('should calculate relative path correctly', async () => {
       const result = await validator.validate('/workspaces/project/src/deep/file.ts');
-      expect(result.relativePath).toBe('src/deep/file.ts');
+      expect(result.relativePath).toBe(path.join('src', 'deep', 'file.ts'));
     });
   });
 
@@ -222,7 +222,7 @@ describe('PathValidator', () => {
   describe('validateOrThrow', () => {
     it('should return path when valid', async () => {
       const resolved = await validator.validateOrThrow('/workspaces/project/src/file.ts');
-      expect(resolved).toBe('/workspaces/project/src/file.ts');
+      expect(resolved).toBe(path.join(projectRoot, 'src', 'file.ts'));
     });
 
     it('should throw when invalid', async () => {
@@ -235,7 +235,7 @@ describe('PathValidator', () => {
   describe('securePath', () => {
     it('should join paths securely', async () => {
       const resolved = await validator.securePath(projectRoot, 'src', 'file.ts');
-      expect(resolved).toBe('/workspaces/project/src/file.ts');
+      expect(resolved).toBe(path.join(projectRoot, 'src', 'file.ts'));
     });
 
     it('should block traversal in segments', async () => {
@@ -260,16 +260,16 @@ describe('PathValidator', () => {
       const projectValidator = createProjectPathValidator('/workspaces/project');
       const prefixes = projectValidator.getAllowedPrefixes();
 
-      expect(prefixes).toContain('/workspaces/project/src');
-      expect(prefixes).toContain('/workspaces/project/tests');
-      expect(prefixes).toContain('/workspaces/project/docs');
+      expect(prefixes).toContain(path.join(projectRoot, 'src'));
+      expect(prefixes).toContain(path.join(projectRoot, 'tests'));
+      expect(prefixes).toContain(path.join(projectRoot, 'docs'));
     });
 
     it('should create full project path validator', () => {
       const fullValidator = createFullProjectPathValidator('/workspaces/project');
       const prefixes = fullValidator.getAllowedPrefixes();
 
-      expect(prefixes).toContain('/workspaces/project');
+      expect(prefixes).toContain(projectRoot);
     });
   });
 
@@ -317,7 +317,7 @@ describe('PathValidator', () => {
       realDir = path.join(tmpRoot, 'real-target');
       await fsPromises.mkdir(realDir, { recursive: true });
       symlinkedPrefix = path.join(tmpRoot, 'symlinked-prefix');
-      await fsPromises.symlink(realDir, symlinkedPrefix, 'dir');
+      await fsPromises.symlink(realDir, symlinkedPrefix, process.platform === 'win32' ? 'junction' : 'dir');
     });
 
     afterEach(async () => {

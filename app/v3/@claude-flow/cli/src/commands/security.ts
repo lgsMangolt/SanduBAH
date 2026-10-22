@@ -277,7 +277,7 @@ const scanCommand: Command = {
                         findings.push({
                           severity: 'high',
                           type: 'Hardcoded Secret',
-                          location: `${path.relative(target, fullPath)}:${i + 1}`,
+                          location: `${path.relative(target, fullPath).split(path.sep).join('/')}:${i + 1}`,
                           description: type,
                         });
                         pattern.lastIndex = 0;
@@ -323,7 +323,7 @@ const scanCommand: Command = {
                         findings.push({
                           severity: severity === 'high' ? 'high' : 'medium',
                           type,
-                          location: `${path.relative(target, fullPath)}:${i + 1}`,
+                          location: `${path.relative(target, fullPath).split(path.sep).join('/')}:${i + 1}`,
                           description: desc,
                         });
                       }

@@ -40,7 +40,7 @@ const roots: Array<{ root: string; trust: string }> = [];
 function project(): string {
   const root = mkdtempSync(join(tmpdir(), 'ruflo-policy-3892-'));
   mkdirSync(join(root, '.claude-flow'), { recursive: true });
-  const id = createHash('sha256').update(realpathSync(root)).digest('hex');
+  const id = createHash('sha256').update(realpathSync.native(root)).digest('hex');
   roots.push({ root, trust: join(policyTrustRoot(), id) });
   return root;
 }
@@ -56,7 +56,7 @@ const statePath = (root: string) => join(root, '.claude-flow', 'policy', 'state.
 const archivePath = (root: string) => join(root, '.claude-flow', 'policy', 'receipts.ledger.jsonl');
 const lockPath = (root: string) => join(root, '.claude-flow', 'policy', 'state.lock');
 const mirrorPath = (root: string) => {
-  const id = createHash('sha256').update(realpathSync(root)).digest('hex');
+  const id = createHash('sha256').update(realpathSync.native(root)).digest('hex');
   return join(policyTrustRoot(), id, 'ledger-anchor-head.json');
 };
 const readState = (root: string) => JSON.parse(readFileSync(statePath(root), 'utf8'));

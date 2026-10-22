@@ -128,9 +128,9 @@ console.log = (...args) => {
     try {
       const __dirname = dirname(fileURLToPath(import.meta.url));
       const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
-      process.stdout.write(`ruflo v${pkg.version || '0.0.0'}\n`);
+      process.stdout.write(`SanduBAH v${pkg.version || '0.0.0'}\n`);
     } catch {
-      process.stdout.write('ruflo v0.0.0\n');
+      process.stdout.write('SanduBAH v0.0.0\n');
     }
     process.exit(0);
   }
@@ -352,13 +352,10 @@ if (isMCPMode) {
   const cli = new CLI();
   cli.run()
     .then(() => {
-      // #1552: Exit cleanly after one-shot commands.
-      // Long-running commands (daemon foreground, mcp, status --watch) never resolve,
-      // so this only fires for normal CLI commands.
-      process.exit(0);
+      process.exitCode ??= 0;
     })
     .catch((error) => {
       console.error('Fatal error:', error.message);
-      process.exit(1);
+      process.exitCode = 1;
     });
 }

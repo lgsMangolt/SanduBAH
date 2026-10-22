@@ -28,6 +28,7 @@ import { mkdir, mkdtemp, writeFile, rm } from 'fs/promises';
 import { spawnSync } from 'child_process';
 import { createRequire } from 'module';
 import { join } from 'path';
+import { pathToFileURL } from 'node:url';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 
@@ -111,7 +112,7 @@ export { main, helper };
       // installs place tsx under this package. Resolve either layout.
       const tsx = createRequire(import.meta.url).resolve('tsx/cli');
       const source = fileURLToPath(new URL('../../src/ruvector/graph-analyzer.ts', import.meta.url));
-      const probe = `import(${JSON.stringify(source)}).then(async ({ buildDependencyGraph }) => {
+      const probe = `import(${JSON.stringify(pathToFileURL(source).href)}).then(async ({ buildDependencyGraph }) => {
         const graph = await buildDependencyGraph(${JSON.stringify(testDir)}, { skipCache: true });
         console.log(JSON.stringify({ imports: graph.nodes.get('source.ts')?.imports,
           edges: graph.edges.map(edge => [edge.source, edge.target]) }));

@@ -177,9 +177,9 @@ export function validatePath(
  */
 export function safePath(baseDir: string, ...segments: string[]): string {
   const resolved = path.resolve(baseDir, ...segments);
-  const normalizedBase = path.normalize(baseDir);
+  const relative = path.relative(path.resolve(baseDir), resolved);
 
-  if (!resolved.startsWith(normalizedBase + path.sep) && resolved !== normalizedBase) {
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`Path traversal blocked: ${resolved}`);
   }
 
@@ -192,24 +192,13 @@ export function safePath(baseDir: string, ...segments: string[]): string {
  */
 export async function safePathAsync(baseDir: string, ...segments: string[]): Promise<string> {
   const resolved = path.resolve(baseDir, ...segments);
-
-  try {
-    const realResolved = await fs.realpath(resolved).catch(() => resolved);
-    const realBase = await fs.realpath(baseDir).catch(() => baseDir);
-
-    if (!realResolved.startsWith(realBase + path.sep) && realResolved !== realBase) {
-      throw new Error(`Path traversal blocked: ${realResolved}`);
-    }
-
-    return realResolved;
-  } catch (error) {
-    // Handle non-existent files
-    const normalizedBase = path.normalize(baseDir);
-    if (!resolved.startsWith(normalizedBase + path.sep) && resolved !== normalizedBase) {
-      throw new Error(`Path traversal blocked: ${resolved}`);
-    }
-    return resolved;
+  const realResolved = await fs.realpath(resolved).catch(() => resolved);
+  const realBase = await fs.realpath(path.resolve(baseDir)).catch(() => path.resolve(baseDir));
+  const relative = path.relative(realBase, realResolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Path traversal blocked: ${realResolved}`);
   }
+  return realResolved;
 }
 
 // ============================================================================

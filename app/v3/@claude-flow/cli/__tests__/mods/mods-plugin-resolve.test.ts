@@ -5,7 +5,7 @@
  * and a fake execFile; nothing here reads the real ~/.claude or runs claude.
  */
 import { describe, it, expect } from 'vitest';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
   claudeConfigDir,
@@ -22,7 +22,7 @@ import { MOD_PLUGINS } from '../../src/mods/install.js';
 import { probeMods } from '../../src/mods/probe.js';
 
 const CFG = '/cfg';
-const ROOT = '/work/proj';
+const ROOT = resolve('/work/proj');
 const CLONE = join(CFG, 'plugins', 'marketplaces', 'ruflo');
 const CACHE = join(CFG, 'plugins', 'cache', 'ruflo', 'ruflo-mods', '0.1.0');
 const manifest = (name: string) => join(CLONE, 'plugins', name, '.claude-plugin', 'plugin.json');
@@ -81,7 +81,7 @@ describe('ADR-404 plugin resolution: findings', () => {
   it('the reported bug: a stale clone and no cached install FAILS with the exact commands', () => {
     const f = byName(resolveFindings(ROOT, 'local', CFG, fakeFs({ ...known, ...staleOnlySwarm }, [CLONE])));
     expect(f['plugin ruflo-mods@ruflo']).toMatchObject({ status: 'fail', message: expect.stringContaining('/ruflo-mods is an unknown command') });
-    expect(f['plugin ruflo-mods@ruflo']!.fix).toBe(`cd "${ROOT}" && claude plugin marketplace update ruflo && claude plugin install ruflo-mods@ruflo --scope local && claude plugin install ruflo-swarm@ruflo --scope local && claude plugin install ruflo-console@ruflo --scope local`);
+    expect(f['plugin ruflo-mods@ruflo']!.fix).toBe(`cd "${ROOT.replace(/\\/g, '\\\\')}" && claude plugin marketplace update ruflo && claude plugin install ruflo-mods@ruflo --scope local && claude plugin install ruflo-swarm@ruflo --scope local && claude plugin install ruflo-console@ruflo --scope local`);
     expect(f['plugin ruflo-swarm@ruflo']!.status).toBe('pass');
   });
 
@@ -116,7 +116,7 @@ describe('ADR-404 plugin resolution: findings', () => {
 
   it('repairCommands quotes the project root and installs every required plugin', () => {
     const cmds = repairCommands('/a b/c', 'local', true);
-    expect(cmds[0]).toBe('cd "/a b/c"');
+    expect(cmds[0]).toBe(`cd "${resolve('/a b/c').replace(/\\/g, '\\\\')}"`);
     expect(cmds.join('\n')).toContain('claude plugin install ruflo-console@ruflo --scope local');
   });
 });

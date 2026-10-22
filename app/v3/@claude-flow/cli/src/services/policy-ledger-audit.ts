@@ -8,6 +8,7 @@ import { closeSync, chmodSync, constants, fstatSync, mkdtempSync, openSync, read
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodeLedgerRecord, policyLedgerRecordLimit } from './policy-ledger-record.js';
+import { openRegularLedgerFile } from './policy-file.js';
 
 export interface ArchiveSnapshot { fd: number; size: number }
 const CHUNK_BYTES = 64 * 1024;
@@ -17,7 +18,7 @@ function fail(error: string): never { throw new Error(error); }
 /** Must run under the policy writer lock. O(1), with no whole-file read. */
 export function captureArchiveSnapshot(file: string): ArchiveSnapshot | undefined {
   let fd: number;
-  try { fd = openSync(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0)); }
+  try { fd = openRegularLedgerFile(file, constants.O_RDONLY); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     fail('policy-ledger-archive-not-regular');

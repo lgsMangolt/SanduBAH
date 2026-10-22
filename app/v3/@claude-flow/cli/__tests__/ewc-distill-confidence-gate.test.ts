@@ -38,7 +38,7 @@
  * real repo tree.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -50,9 +50,14 @@ describe('#dream-2026-08-27 distillLearning EWC confidence gate', () => {
     originalCwd = process.cwd();
     tmpRoot = mkdtempSync(join(tmpdir(), 'ruflo-ewc-distill-'));
     process.chdir(tmpRoot);
+    mkdirSync(join(tmpRoot, '.claude-flow'));
   });
 
   afterEach(async () => {
+    const intelligence = await import('../src/memory/intelligence.js');
+    intelligence.flushPatterns();
+    intelligence.flushIntelligenceStats();
+    intelligence.clearIntelligence();
     process.chdir(originalCwd);
     rmSync(tmpRoot, { recursive: true, force: true });
     vi.restoreAllMocks();

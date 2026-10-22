@@ -14,7 +14,7 @@ describe('x_federation_join (self-service invite path)', () => {
     const f = join(mkdtempSync(join(tmpdir(), 'xj-')), 'nostr.key');
     const a = loadOrCreateKey(nt, f); const b = loadOrCreateKey(nt, f);
     expect(a.created).toBe(true); expect(b.created).toBe(false); expect(a.pubkey).toBe(b.pubkey);
-    expect(existsSync(f)).toBe(true); expect(statSync(f).mode & 0o777).toBe(0o600);
+    expect(existsSync(f)).toBe(true); expect(statSync(f).mode & 0o777).toBe(process.platform === 'win32' ? 0o666 : 0o600);
   });
   it.skipIf(!nt)('builds a valid NIP-98 header bound to url+method+payload hash', () => {
     const sk = generateSecretKey(); const h = nip98Header(nt, sk, 'https://r/api/invites/claim', 'POST', '{"code":"v2.x"}');

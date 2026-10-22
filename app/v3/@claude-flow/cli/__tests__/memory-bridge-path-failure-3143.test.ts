@@ -71,9 +71,13 @@ describe('#3143 bridge state belongs to a canonical database path', () => {
     const db = join(root, 'memory.db');
     const aliasDir = join(root, 'alias');
     writeFileSync(db, '');
-    mkdirSync(aliasDir);
     const alias = join(aliasDir, 'memory.db');
-    symlinkSync(db, alias);
+    if (process.platform === 'win32') {
+      symlinkSync(root, aliasDir, 'junction');
+    } else {
+      mkdirSync(aliasDir);
+      symlinkSync(db, alias);
+    }
 
     const directRegistry = await bridge.getControllerRegistry(db);
     const aliasRegistry = await bridge.getControllerRegistry(alias);
@@ -85,7 +89,7 @@ describe('#3143 bridge state belongs to a canonical database path', () => {
   it('canonicalizes a symlinked directory before the database file exists', async () => {
     const db = join(root, 'new.db');
     const aliasDir = join(root, 'alias-dir');
-    symlinkSync(root, aliasDir, 'dir');
+    symlinkSync(root, aliasDir, process.platform === 'win32' ? 'junction' : 'dir');
 
     const directRegistry = await bridge.getControllerRegistry(db);
     const aliasRegistry = await bridge.getControllerRegistry(join(aliasDir, 'new.db'));

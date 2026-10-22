@@ -3099,6 +3099,16 @@ export async function storeEntry(options: {
         throw e;
       }
 
+      try {
+        db.run(
+          `UPDATE vector_indexes SET total_vectors = (
+            SELECT COUNT(*) FROM memory_entries
+            WHERE namespace = ? AND embedding IS NOT NULL AND (status = 'active' OR status IS NULL)
+          ) WHERE name = ?`,
+          [namespace, namespace]
+        );
+      } catch {}
+
       // Save
       const data = db.export();
       writeDbImagePreservingFormat(dbPath, data);

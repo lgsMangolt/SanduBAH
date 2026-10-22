@@ -24,7 +24,7 @@ const prepare = db.prepare.bind(db);
 db.prepare = ((statement: string) => { sql.push(statement); return prepare(statement); }) as typeof db.prepare;
 beforeEach(() => {
   sql.length = 0; embed.mockClear();
-  __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: db, embedder: { embed } }), get: () => null });
+  __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: db, embedder: { pipeline: {}, embed } }), get: () => null });
 });
 afterAll(() => { __setMemoryBridgeRegistryForTests(null); db.close(); rmSync(root, { recursive: true, force: true }); });
 const append = (key: string, value = 'exact redacted state') => bridgeStoreEntry({
@@ -51,7 +51,7 @@ describe('native structured immutable append', () => {
       .toEqual({ content: 'preserved', status: 'deleted', embedding: '[1]' });
   });
   it('refuses a WASM bridge before any write or embedding', async () => {
-    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: db, isWasm: true, embedder: { embed } }), get: () => null });
+    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: db, isWasm: true, embedder: { pipeline: {}, embed } }), get: () => null });
     const result = await append('wasm-refused');
     expect(result).toMatchObject({ success: false, error: expect.stringMatching(/non-native bridge/) });
     expect(prepare('SELECT 1 FROM memory_entries WHERE key=?').get('wasm-refused')).toBeUndefined();
@@ -135,12 +135,12 @@ describe('withdrawn authority while an older writer is inflight', () => {
 describe('durable backend and legacy logical-key invariants', () => {
   it('refuses a native in-memory or wrong-file handle before writing a record', async () => {
     const ephemeral = new Database(':memory:');
-    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: ephemeral, embedder: { embed } }), get: () => null });
+    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: ephemeral, embedder: { pipeline: {}, embed } }), get: () => null });
     expect((await append('ephemeral'))?.success).toBe(false);
     expect(ephemeral.prepare("SELECT 1 FROM memory_entries WHERE key='ephemeral'").get()).toBeUndefined();
     ephemeral.close();
     const otherPath = join(root, 'different-file.db'); const other = new Database(otherPath);
-    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: other, embedder: { embed } }), get: () => null });
+    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: other, embedder: { pipeline: {}, embed } }), get: () => null });
     expect((await append('wrong-file'))?.success).toBe(false);
     expect(other.prepare("SELECT 1 FROM memory_entries WHERE key='wrong-file'").get()).toBeUndefined();
     other.close();
@@ -151,7 +151,7 @@ describe('durable backend and legacy logical-key invariants', () => {
     legacy.exec(`ATTACH DATABASE '${dbPath.replaceAll("'", "''")}' AS original;
       CREATE TABLE memory_entries AS SELECT * FROM original.memory_entries;
       CREATE TABLE vector_indexes AS SELECT * FROM original.vector_indexes; DETACH DATABASE original;`);
-    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: legacy, embedder: { embed } }), get: () => null });
+    __setMemoryBridgeRegistryForTests({ getAgentDB: () => ({ database: legacy, embedder: { pipeline: {}, embed } }), get: () => null });
     const write = (key: string) => bridgeStoreEntry({ key, value: 'changed', namespace: 'fixture', dbPath: legacyPath,
       generateEmbeddingFlag: false, requireNative: true, appendOnly: true });
     expect((await write('new'))?.success).toBe(false);

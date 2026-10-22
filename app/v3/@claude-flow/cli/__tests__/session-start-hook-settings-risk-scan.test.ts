@@ -139,7 +139,9 @@ describe('hook-handler.cjs session-restore — settings.json risk scan (unit)', 
 describe('hook-handler.cjs session-restore — settings.json risk scan (end-to-end)', () => {
   function runSessionRestore(settings: unknown | null) {
     const project = projectWithSettings(settings);
-    return spawnSync(process.execPath, [HOOK_PATH, 'session-restore'], {
+    const preload = join(project, 'disable-background-refresh.cjs');
+    writeFileSync(preload, "require('node:child_process').spawn = () => { throw new Error('background refresh is outside this scanner fixture'); };\n");
+    return spawnSync(process.execPath, ['--require', preload, HOOK_PATH, 'session-restore'], {
       cwd: project,
       env: { ...process.env, CLAUDE_PROJECT_DIR: project, RUFLO_NO_AUTO_ENABLE: '1' },
       input: '{}',

@@ -3,7 +3,7 @@
 // "wire remaining surfaces" item in ADR-074 / ADR-075.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -13,11 +13,16 @@ let originalCwd: string;
 beforeAll(async () => {
   originalCwd = process.cwd();
   process.chdir(SCRATCH);
+  mkdirSync(join(SCRATCH, '.claude-flow'), { recursive: true });
   const intel = await import('../src/memory/intelligence.js');
   intel.clearIntelligence();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.flushPatterns();
+  intel.flushIntelligenceStats();
+  intel.clearIntelligence();
   try { process.chdir(originalCwd); } catch { /* */ }
   try { rmSync(SCRATCH, { recursive: true, force: true }); } catch { /* */ }
 });

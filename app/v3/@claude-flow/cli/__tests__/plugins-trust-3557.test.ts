@@ -12,9 +12,15 @@ import { createHash } from 'crypto';
 // and fakes `npm pack` by writing a tarball whose bytes the test controls.
 const npmCalls: string[][] = [];
 let packBytes = Buffer.from('tarball-bytes');
+vi.mock('../src/runtime/browser-command.js', async importOriginal => ({
+  ...await importOriginal<typeof import('../src/runtime/browser-command.js')>(),
+  resolveNpmLaunch: () => ({ command: process.execPath, argsPrefix: ['fixture-npm-cli.js'] }),
+}));
 vi.mock('child_process', () => ({
   execFile: (file: string, args: string[], _opts: unknown, cb: (e: unknown, r?: unknown) => void) => {
-    const npmArgs = file === 'cmd.exe' ? args.slice(4) : args;
+    expect(file).toBe(process.execPath);
+    expect(args[0]).toBe('fixture-npm-cli.js');
+    const npmArgs = args.slice(1);
     npmCalls.push(npmArgs);
     if (npmArgs[0] === 'pack') {
       const dest = npmArgs[npmArgs.indexOf('--pack-destination') + 1];

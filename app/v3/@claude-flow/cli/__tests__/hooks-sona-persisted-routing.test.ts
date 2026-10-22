@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const cli = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const requireHere = createRequire(join(cli, 'package.json'));
+const phaseTimeout = process.platform === 'win32' ? 30000 : 10000;
 let owned: string;
 let source: string;
 let runner: string;
@@ -108,7 +109,7 @@ it('actual public producer or fresh consumer', async () => {
       '@claude-flow/security': join(source, 'security', 'src'),
       '@claude-flow/shared': join(source, 'shared', 'src'),
     } },
-    test: { include: [driver], maxWorkers: 1, fileParallelism: false },
+    test: { include: ['native.test.ts'], maxWorkers: 1, fileParallelism: false },
   })};`);
   for (const phase of ['produce', 'consume']) {
     const child = spawnSync(process.execPath, [runner, 'run', '--config', config, '--reporter=verbose'], {
@@ -120,7 +121,7 @@ it('actual public producer or fresh consumer', async () => {
         CLAUDE_FLOW_ROUTER_EMBEDDER: 'hash', CLAUDE_FLOW_ROUTER_TYPESAFE: '0',
         RUFLO_DAEMON_AI_WORKERS: '0', OWNED_SONA_PHASE: phase,
       },
-      encoding: 'utf8', timeout: 10000, maxBuffer: 1024 * 1024,
+      encoding: 'utf8', timeout: phaseTimeout, maxBuffer: 1024 * 1024, windowsHide: true,
     });
     expect(child.error, child.stdout + child.stderr).toBeUndefined();
     expect(child.status, child.stdout + child.stderr).toBe(0);
@@ -150,5 +151,5 @@ describe('hooks_route persisted SONA patterns (#3662)', () => {
       if (scenario.outcomes === 1 || scenario.outcomes === 2) expect(suggestion.source).not.toBe('sona-pattern');
       if (scenario.agent === 'unknown-agent') expect(suggestion.agent).toBe('unknown-agent');
     }
-  }, 25000);
+  }, process.platform === 'win32' ? 75000 : 25000);
 });

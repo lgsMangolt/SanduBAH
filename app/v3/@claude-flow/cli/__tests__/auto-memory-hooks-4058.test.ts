@@ -166,8 +166,8 @@ describe('#4058 point 5: a git worktree uses the main repository memory director
     const { hook } = installHook(packageHook, home);
     run(hook, wt, ['import'], { HOME: home, USERPROFILE: home });
     const seen = readFileSync(join(home, 'config-seen.jsonl'), 'utf8').trim().split('\n').map(l => JSON.parse(l));
-    const key = (p: string) => p.split('/').join('/').replace(/[\/_:]/g, '-');
-    expect(seen[0].memoryDir).toBe(join(home, '.claude', 'projects', key(main), 'memory'));
+    const key = (p: string) => p.replace(/\\/g, '/').replace(/[\/_:]/g, '-');
+    expect(seen[0].memoryDir).toBe(join(home, '.claude', 'projects', key(realpathSync.native(main)), 'memory'));
     expect(seen[0].memoryDir).not.toContain(key(wt));
   });
 

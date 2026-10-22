@@ -25,6 +25,7 @@ import {
 } from '@claude-flow/security/mcp-caller-identity';
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { openRegularLedgerFile } from './policy-file.js';
 import {
   closeSync,
   constants as fsConstants,
@@ -49,7 +50,7 @@ import { hostname, userInfo } from 'node:os';
 import { syncPolicyProjection } from '../mods/policy-projection.js';
 import { ATOMIC_JSON_WRITER, type AtomicJsonSource } from './policy-anchor-log.js';
 import { captureArchiveSnapshot, verifyFullPolicyLedger, type ArchiveSnapshot } from './policy-ledger-audit.js';
-import { assessAnchors, policyTrustRoot, recordAnchor, type AnchorEvent, type AnchorEntry } from './policy-ledger-anchor.js';
+import { assessAnchors, policyProjectId, policyTrustRoot, recordAnchor, type AnchorEvent, type AnchorEntry } from './policy-ledger-anchor.js';
 
 const POLICY_DIR = join('.claude-flow', 'policy');
 const POLICY_FILE = 'state.json';
@@ -247,8 +248,7 @@ function syncDirectory(dir: string): void {
 /** Recover only an incomplete, unacknowledged final append. All inspection,
  * truncation, append and sync use the same nofollow regular-file descriptor. */
 function appendArchiveDurably(file: string, receipts: PolicyReceipt[], verifier: AgenticPolicyEngine): void {
-  const fd = openSync(file, fsConstants.O_RDWR | fsConstants.O_CREAT
-    | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0), 0o600);
+  const fd = openRegularLedgerFile(file, fsConstants.O_RDWR | fsConstants.O_CREAT, 0o600);
   try {
     const stat = fstatSync(fd);
     if (!stat.isFile()) throw new Error('policy-ledger-archive-not-regular');
@@ -330,7 +330,7 @@ async function writeJsonAtomic(file: string, value: unknown): Promise<void> {
 
 function trustPaths(projectRoot: string): { key: string; anchor: string } {
   const trustRoot = policyTrustRoot();
-  const projectId = createHash('sha256').update(realpathSync(projectRoot)).digest('hex');
+  const projectId = policyProjectId(projectRoot, trustRoot);
   const dir = join(trustRoot, projectId);
   return { key: join(dir, 'anchor.key'), anchor: join(dir, 'state.anchor.json') };
 }
@@ -398,7 +398,7 @@ async function writePolicyStateFiles(projectRoot: string, statePath: string, sta
     const key = trustKey(projectRoot, true)!;
     const anchor = {
       version: 1,
-      projectRoot: realpathSync(projectRoot),
+      projectRoot: realpathSync.native(projectRoot),
       mode: state.mode,
       authentication: stateAuthentication(state, key),
       updatedAt: Date.now(),
@@ -817,13 +817,13 @@ export async function authorizeMcpTool(
     // the coordinator checkout from that directory so a worker cannot fall
     // back to independent legacy policy state in its isolated worktree.
     try {
-      const cwd = realpathSync(process.cwd());
+      const cwd = realpathSync.native(process.cwd());
       const common = execFileSync(
         'git',
         ['-C', cwd, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
         { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
       ).trim();
-      projectRoot = dirname(realpathSync(common));
+      projectRoot = dirname(realpathSync.native(common));
     } catch {
       throw new Error('authoritative-worker-policy-root-unavailable');
     }

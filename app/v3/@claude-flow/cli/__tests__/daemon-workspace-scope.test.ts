@@ -9,6 +9,7 @@
  * on it. These tests pin the two pure helpers that implement the filter.
  */
 import { describe, it, expect } from 'vitest';
+import { resolve } from 'node:path';
 import {
   resolveWorkspaceFlag,
   daemonCommandLineBelongsToWorkspace,
@@ -112,7 +113,8 @@ describe('#1914 — daemon workspace scoping', () => {
     });
 
     it('passes an absolute path through unchanged', () => {
-      expect(resolveWorkspaceFlag('/Users/me/proj-a')).toBe('/Users/me/proj-a');
+      const absolute = resolve('/Users/me/proj-a');
+      expect(resolveWorkspaceFlag(absolute)).toBe(absolute);
     });
 
     it('rejects values with shell metacharacters or null bytes (defence-in-depth)', () => {

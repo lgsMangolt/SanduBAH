@@ -60,8 +60,8 @@ export class CLI {
   private interactive: boolean;
 
   constructor(options: CLIOptions = {}) {
-    this.name = options.name || 'ruflo';
-    this.description = options.description || 'RuFlo V3 - AI Agent Orchestration Platform';
+    this.name = options.name || 'SanduBAH';
+    this.description = options.description || 'SanduBAH V3 - AI Agent Orchestration Platform';
     this.version = options.version || VERSION;
     this.parser = commandParser;
     this.output = output;

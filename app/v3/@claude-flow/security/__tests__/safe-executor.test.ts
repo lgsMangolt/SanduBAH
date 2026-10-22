@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+const echoArgs = (...values: string[]) => ['-e', 'console.log(process.argv.slice(1).join(" "))', '--', ...values];
 import {
   SafeExecutor,
   SafeExecutorError,
@@ -21,7 +22,7 @@ describe('SafeExecutor', () => {
 
   beforeEach(() => {
     executor = new SafeExecutor({
-      allowedCommands: ['echo', 'ls', 'git', 'npm', 'node'],
+      allowedCommands: ['echo', 'ls', 'git', 'npm', 'node', process.execPath],
       timeout: 5000,
     });
   });
@@ -54,7 +55,7 @@ describe('SafeExecutor', () => {
 
   describe('Command Validation', () => {
     it('should allow commands in allowlist', async () => {
-      const result = await executor.execute('echo', ['hello']);
+      const result = await executor.execute(process.execPath, echoArgs('hello'));
       expect(result.exitCode).toBe(0);
       expect(result.stdout.trim()).toBe('hello');
     });
@@ -124,17 +125,17 @@ describe('SafeExecutor', () => {
     });
 
     it('should allow safe arguments', async () => {
-      const result = await executor.execute('echo', ['hello', 'world']);
+      const result = await executor.execute(process.execPath, echoArgs('hello', 'world'));
       expect(result.exitCode).toBe(0);
     });
 
     it('should allow arguments with dashes', async () => {
-      const result = await executor.execute('echo', ['-n', 'hello']);
+      const result = await executor.execute(process.execPath, echoArgs('-n', 'hello'));
       expect(result.exitCode).toBe(0);
     });
 
     it('should allow arguments with equals', async () => {
-      const result = await executor.execute('echo', ['KEY=value']);
+      const result = await executor.execute(process.execPath, echoArgs('KEY=value'));
       expect(result.exitCode).toBe(0);
     });
   });
@@ -153,7 +154,7 @@ describe('SafeExecutor', () => {
 
   describe('Command Execution', () => {
     it('should return stdout', async () => {
-      const result = await executor.execute('echo', ['hello']);
+      const result = await executor.execute(process.execPath, echoArgs('hello'));
       expect(result.stdout.trim()).toBe('hello');
     });
 
@@ -169,14 +170,14 @@ describe('SafeExecutor', () => {
     });
 
     it('should track execution duration', async () => {
-      const result = await executor.execute('echo', ['hello']);
+      const result = await executor.execute(process.execPath, echoArgs('hello'));
       expect(result.duration).toBeGreaterThanOrEqual(0);
     });
 
     it('should include command in result', async () => {
-      const result = await executor.execute('echo', ['hello']);
-      expect(result.command).toBe('echo');
-      expect(result.args).toEqual(['hello']);
+      const result = await executor.execute(process.execPath, echoArgs('hello'));
+      expect(result.command).toBe(process.execPath);
+      expect(result.args).toEqual(echoArgs('hello'));
     });
   });
 
@@ -194,17 +195,16 @@ describe('SafeExecutor', () => {
   });
 
   describe('Streaming Execution', () => {
-    it('should return process handle', () => {
-      const streaming = executor.executeStreaming('echo', ['hello']);
+    it('should return process handle', async () => {
+      const streaming = executor.executeStreaming(process.execPath, echoArgs('hello'));
       expect(streaming.process).toBeDefined();
       expect(streaming.promise).toBeInstanceOf(Promise);
 
-      // Clean up
-      streaming.process.kill();
+      await streaming.promise;
     });
 
     it('should stream stdout', async () => {
-      const streaming = executor.executeStreaming('echo', ['hello']);
+      const streaming = executor.executeStreaming(process.execPath, echoArgs('hello'));
       const result = await streaming.promise;
       expect(result.stdout.trim()).toBe('hello');
     });
@@ -253,7 +253,7 @@ describe('SafeExecutor', () => {
     it('should NOT use shell for execution', async () => {
       // If shell were enabled, this would be interpreted as command chaining
       // With shell disabled, it's just a string argument
-      const result = await executor.execute('echo', ['hello']);
+      const result = await executor.execute(process.execPath, echoArgs('hello'));
       expect(result.exitCode).toBe(0);
 
       // This should fail validation before reaching execution

@@ -10,7 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, symlinkSync } from 'fs';
+import { createFileLinkFixture as symlinkSync } from '../helpers/file-link-fixture.js';
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import {

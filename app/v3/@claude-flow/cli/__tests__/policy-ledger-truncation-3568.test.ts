@@ -19,7 +19,7 @@ const roots: Array<{ root: string; trust: string }> = [];
 function project(): string {
   const root = mkdtempSync(join(tmpdir(), 'ruflo-policy-3568-'));
   mkdirSync(join(root, '.claude-flow'), { recursive: true });
-  const projectId = createHash('sha256').update(realpathSync(root)).digest('hex');
+  const projectId = createHash('sha256').update(realpathSync.native(root)).digest('hex');
   roots.push({ root, trust: join(policyTrustRoot(), projectId) });
   return root;
 }

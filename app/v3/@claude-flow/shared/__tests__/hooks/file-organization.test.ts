@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { join } from 'node:path';
 import {
   createHookRegistry,
   createFileOrganizationHook,
@@ -30,7 +31,7 @@ describe('FileOrganizationHook', () => {
       expect(result.blocked).toBe(true);
       expect(result.blockReason).toBeDefined();
       expect(result.suggestedDirectory).toBe('src/');
-      expect(result.suggestedPath).toBe('src/utils.ts');
+      expect(result.suggestedPath).toBe(join('src', 'utils.ts'));
     });
 
     it('should block JavaScript source files in root', async () => {
@@ -45,7 +46,7 @@ describe('FileOrganizationHook', () => {
 
       expect(result.blocked).toBe(true);
       expect(result.suggestedDirectory).toBe('tests/');
-      expect(result.suggestedPath).toBe('tests/utils.test.ts');
+      expect(result.suggestedPath).toBe(join('tests', 'utils.test.ts'));
     });
 
     it('should block spec files in root', async () => {

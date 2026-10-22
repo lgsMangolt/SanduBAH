@@ -36,7 +36,7 @@ describe('generated settings by scope', () => {
     expect(commands.length).toBeGreaterThan(5);
     for (const command of commands) {
       expect(command).not.toContain('CLAUDE_PROJECT_DIR');
-      expect(command).toMatch(/\$\{HOME\}\/\.claude\/helpers\/|%USERPROFILE%|process\.env\.USERPROFILE/);
+      expect(command).toMatch(/\$\{HOME\}\/\.claude\/helpers\/|%USERPROFILE%|(?:process\.env|e)\.USERPROFILE/);
     }
   });
 
@@ -167,9 +167,11 @@ describe('ruflo init --upgrade --settings', () => {
 describe('executeUpgrade creates missing settings for its target', () => {
   it('pins the commands when the target is the home directory', async () => {
     const savedHome = process.env.HOME;
+    const savedUserProfile = process.env.USERPROFILE;
     const home = mkdtempSync(join(tmpdir(), 'ruflo-upgrade-home-'));
     tempRoots.push(home);
     process.env.HOME = home;
+    process.env.USERPROFILE = home;
     try {
       const result = await executeUpgrade(home, true);
       expect(result.created).toContain('.claude/settings.json');
@@ -177,6 +179,7 @@ describe('executeUpgrade creates missing settings for its target', () => {
       for (const command of commandsOf(settings)) expect(command).not.toContain('CLAUDE_PROJECT_DIR');
     } finally {
       if (savedHome === undefined) delete process.env.HOME; else process.env.HOME = savedHome;
+      if (savedUserProfile === undefined) delete process.env.USERPROFILE; else process.env.USERPROFILE = savedUserProfile;
     }
   });
 });

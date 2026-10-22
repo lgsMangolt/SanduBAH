@@ -14,12 +14,17 @@
 //   5. learningPath signal — recordTrajectory returns success without throwing,
 //      proving the trajectory pipeline (not just memory-bridge) ran.
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { distillAndSerialise } from '../src/memory/structured-distill.js';
 import {
   recordTrajectory,
   getUnifiedLearningStats,
   flushIntelligenceStats,
+  flushPatterns,
+  clearIntelligence,
 } from '../src/memory/intelligence.js';
 import {
   storeNeuralPatterns,
@@ -59,6 +64,8 @@ const FIXTURE = [
 ];
 
 describe('pretrain-from-github wiring guard (#2245 regression)', () => {
+  let scratch: string;
+  let originalCwd: string;
   let before: Awaited<ReturnType<typeof getUnifiedLearningStats>>;
   let afterStats: Awaited<ReturnType<typeof getUnifiedLearningStats>>;
   let neuralBefore: Awaited<ReturnType<typeof getNeuralStoreStats>>;
@@ -66,6 +73,11 @@ describe('pretrain-from-github wiring guard (#2245 regression)', () => {
   let trainedCount = 0;
 
   beforeAll(async () => {
+    originalCwd = process.cwd();
+    scratch = mkdtempSync(join(tmpdir(), 'pretrain-history-'));
+    mkdirSync(join(scratch, '.claude-flow'));
+    process.chdir(scratch);
+    clearIntelligence();
     before = await getUnifiedLearningStats();
     neuralBefore = await getNeuralStoreStats();
 
@@ -98,6 +110,14 @@ describe('pretrain-from-github wiring guard (#2245 regression)', () => {
     flushIntelligenceStats();
     afterStats = await getUnifiedLearningStats();
     neuralAfter = await getNeuralStoreStats();
+  });
+
+  afterAll(() => {
+    flushPatterns();
+    flushIntelligenceStats();
+    clearIntelligence();
+    process.chdir(originalCwd);
+    rmSync(scratch, { recursive: true, force: true });
   });
 
   it('feeds every fixture item through recordTrajectory without errors', () => {

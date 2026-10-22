@@ -5,7 +5,7 @@
  * real claude.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -54,7 +54,7 @@ const [, , ...argv] = process.argv;
 fs.appendFileSync(${JSON.stringify(join(home, 'calls'))}, argv.join(' ') + '\n');
 const cfg = ${JSON.stringify(cfg)};
 if (${JSON.stringify(mode)} === 'fail') { process.stderr.write('network down\n'); process.exit(1); }
-if (argv[1] === 'marketplace' && argv[3] && argv[3].startsWith('/')) {
+if (argv[1] === 'marketplace' && argv[3] && path.isAbsolute(argv[3])) {
   fs.mkdirSync(cfg, { recursive: true });
   fs.writeFileSync(path.join(cfg, 'known_marketplaces.json'), JSON.stringify({ ruflo: { source: { source: 'directory', path: argv[3] }, installLocation: argv[3] } }));
 } else if (argv[1] === 'marketplace') {
@@ -81,7 +81,19 @@ if (argv[1] === 'install') {
   fs.writeFileSync(file, JSON.stringify(rec));
 }
 `;
-  writeFileSync(join(home, 'bin', 'claude'), `#!${process.execPath}\n${node}`, { mode: 0o755 });
+  if (process.platform === 'win32') {
+    const executable = join(home, 'bin', 'claude.exe');
+    if (!existsSync(executable)) {
+      try { linkSync(process.execPath, executable); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+        copyFileSync(process.execPath, executable);
+      }
+    }
+    writeFileSync(join(root, 'plugin'), `process.argv.splice(2, 0, 'plugin');\n${node}`);
+  } else {
+    writeFileSync(join(home, 'bin', 'claude'), `#!${process.execPath}\n${node}`, { mode: 0o755 });
+  }
 }
 // Only the plugin commands; status also asks each claude its --version.
 const calls = () => (existsSync(join(home, 'calls')) ? readFileSync(join(home, 'calls'), 'utf8').trim().split('\n').filter((l) => l.startsWith('plugin ')) : []);

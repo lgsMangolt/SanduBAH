@@ -231,6 +231,7 @@ function atomicWriteJson(file: string, value: unknown): void {
     fs.closeSync(fd);
   }
   fs.renameSync(tmp, file);
+  if (process.platform === 'win32') return;
   const dirFd = fs.openSync(path.dirname(file), fs.constants.O_RDONLY);
   try {
     fs.fsyncSync(dirFd);

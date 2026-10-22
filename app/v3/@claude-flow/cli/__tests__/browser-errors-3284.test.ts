@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const execFileSync = vi.hoisted(() => vi.fn());
 vi.mock('child_process', () => ({ execFileSync }));
+vi.mock('../src/runtime/browser-command.js', () => ({
+  resolveAgentBrowserLaunch: () => ({ command: 'agent-browser', argsPrefix: [] }),
+  resolveNpxLaunch: () => ({ command: 'npx', argsPrefix: [] }),
+}));
 vi.mock('../src/mcp-tools/validate-input.js', () => ({
   validateIdentifier: () => ({ valid: true }),
   validateText: () => ({ valid: true }),

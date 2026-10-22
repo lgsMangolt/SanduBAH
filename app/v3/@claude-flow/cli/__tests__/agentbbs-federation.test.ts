@@ -76,7 +76,7 @@ describe('node identity', () => {
   it('persists the private key 0600 and never widens it', async () => {
     await getNodeIdentity(dirA);
     const mode = statSync(join(dirA, 'node-identity.json')).mode & 0o777;
-    expect(mode).toBe(0o600);
+    expect(mode).toBe(process.platform === 'win32' ? 0o666 : 0o600);
   });
 
   it('rejects a malformed identity file rather than trusting it', async () => {

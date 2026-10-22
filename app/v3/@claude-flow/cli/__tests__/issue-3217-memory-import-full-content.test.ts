@@ -27,17 +27,22 @@ const importer = memoryTools.find((tool) => tool.name === 'memory_import_claude'
 
 let home: string;
 let originalHome: string | undefined;
+let originalUserProfile: string | undefined;
 
 beforeEach(() => {
   originalHome = process.env.HOME;
+  originalUserProfile = process.env.USERPROFILE;
   home = mkdtempSync(join(tmpdir(), 'ruflo-claude-import-3217-'));
   process.env.HOME = home;
+  process.env.USERPROFILE = home;
   layer.storeEntry.mockClear();
 });
 
 afterEach(() => {
   if (originalHome === undefined) delete process.env.HOME;
   else process.env.HOME = originalHome;
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = originalUserProfile;
   rmSync(home, { recursive: true, force: true });
 });
 

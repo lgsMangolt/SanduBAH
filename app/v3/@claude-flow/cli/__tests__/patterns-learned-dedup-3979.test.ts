@@ -4,7 +4,7 @@
 // into an existing pattern (same content). The metric read as learning while it
 // was really a step count. It must count only patterns that were actually added.
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -38,7 +38,15 @@ beforeAll(() => {
   mkdirSync(join(SCRATCH, '.claude-flow'), { recursive: true });
 });
 
-afterAll(() => {
+afterEach(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.flushPatterns();
+  intel.flushIntelligenceStats();
+});
+
+afterAll(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.clearIntelligence();
   try { process.chdir(originalCwd); } catch { /* best-effort */ }
   try { rmSync(SCRATCH, { recursive: true, force: true }); } catch { /* best-effort */ }
 });

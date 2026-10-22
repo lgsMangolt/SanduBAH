@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
+import { resolveNpmLaunch } from '../src/runtime/browser-command.js';
 
 const PKG = 'ruflo-upgrade-probe-3557';
 const state: { tarballs: Record<string, string> } = { tarballs: {} };
@@ -44,12 +45,15 @@ describe('#3557 plugins upgrade re-applies the trust policy', () => {
         name: PKG,
         version,
         ...(withPostinstall
-          ? { scripts: { postinstall: `node -e "require('fs').writeFileSync('${sentinel}', '${version}')"` } }
+          ? { scripts: { postinstall: 'node install.cjs' } }
           : {}),
         'claude-flow': claudeFlow,
       }),
     );
-    const out = execFileSync('npm', ['pack', '--pack-destination', work, '--ignore-scripts', '--json'], {
+    fs.writeFileSync(path.join(src, 'install.cjs'), `require('fs').writeFileSync(${JSON.stringify(sentinel)}, ${JSON.stringify(version)});\n`);
+    const launch = resolveNpmLaunch();
+    if (!launch) throw new Error('npm is required by the upgrade trust regression');
+    const out = execFileSync(launch.command, [...launch.argsPrefix, 'pack', '--pack-destination', work, '--ignore-scripts', '--json'], {
       cwd: src,
       encoding: 'utf-8',
     });

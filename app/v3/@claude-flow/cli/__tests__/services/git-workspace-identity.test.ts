@@ -86,8 +86,9 @@ describe('#2661 — git workspace identity', () => {
   it('preserves valid trailing whitespace in repository and linked worktree paths (#3863)', () => {
     const parent = mkdtempSync(join(tmpdir(), 'gwi-ws-'));
     try {
-      const spaced = join(parent, 'owned repo ');
-      const linked = join(parent, 'linked leaf ');
+      const whitespace = process.platform === 'win32' ? '\u00a0' : ' ';
+      const spaced = join(parent, `owned repo${whitespace}`);
+      const linked = join(parent, `linked leaf${whitespace}`);
       mkdirSync(spaced);
       git(spaced, 'init', '-q');
       git(spaced, 'config', 'user.email', 'test@test.local');
@@ -100,8 +101,8 @@ describe('#2661 — git workspace identity', () => {
       const a = resolveGitWorkspaceIdentity(spaced);
       const b = resolveGitWorkspaceIdentity(linked);
       expect(a.isGit).toBe(true);
-      expect(a.worktreeRoot).toBe(realpathSync(spaced));
-      expect(b.worktreeRoot).toBe(realpathSync(linked));
+      expect(realpathSync.native(a.worktreeRoot)).toBe(realpathSync.native(spaced));
+      expect(realpathSync.native(b.worktreeRoot)).toBe(realpathSync.native(linked));
       expect(a.head).toMatch(/^[0-9a-f]{40}$/);
       expect(b.head).toBe(a.head);
       expect(b.commonGitDir).toBe(a.commonGitDir);

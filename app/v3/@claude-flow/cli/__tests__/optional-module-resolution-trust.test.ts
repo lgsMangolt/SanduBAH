@@ -33,7 +33,7 @@ function write(file: string, content: string) {
 
 /** Source of `function name(...) { ... }` up to the next top-level closing brace. */
 function fnSource(file: string, name: string): string {
-  const source = readFileSync(resolve(REPO, file), 'utf8');
+  const source = readFileSync(resolve(REPO, file), 'utf8').replace(/\r\n/g, '\n');
   const start = source.search(new RegExp(`function ${name}\\(`));
   expect(start, `${name} in ${file}`).toBeGreaterThan(-1);
   return source.slice(start, source.indexOf('\n}\n', start));
@@ -96,18 +96,18 @@ describe('plugin locators stay inside the package own install', () => {
   it('pnpm and global layouts stop at their node_modules too', () => {
     const pnpm = '/p/node_modules/.pnpm/@claude-flow+cli@1/node_modules/@claude-flow/cli/dist/src/commands';
     expect(ownInstallAncestors(pnpm)).not.toContain('/p/node_modules/.pnpm/@claude-flow+cli@1');
-    expect(ownInstallAncestors('/usr/lib/node_modules/@claude-flow/cli/dist/src')).toEqual([
+    expect(ownInstallAncestors(resolve('/usr/lib/node_modules/@claude-flow/cli/dist/src'))).toEqual([
       '/usr/lib/node_modules/@claude-flow/cli/dist/src',
       '/usr/lib/node_modules/@claude-flow/cli/dist',
       '/usr/lib/node_modules/@claude-flow/cli',
       '/usr/lib/node_modules/@claude-flow',
-    ]);
+    ].map(directory => resolve(directory)));
   });
 
   it('a source checkout still reaches the repo root (monorepo dev)', () => {
-    const repo = '/work/ruflo';
+    const repo = resolve('/work/ruflo');
     expect(ownPluginDirs(`${repo}/v3/@claude-flow/cli/src/mcp-tools`, 'ruflo-testgen', 'scripts')).toContain(
-      `${repo}/plugins/ruflo-testgen/scripts`,
+      join(repo, 'plugins', 'ruflo-testgen', 'scripts'),
     );
   });
 });

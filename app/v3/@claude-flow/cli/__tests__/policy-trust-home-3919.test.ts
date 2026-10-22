@@ -17,7 +17,7 @@ const scratch = (prefix: string) => {
   dirs.push(d);
   return d;
 };
-const projectId = (root: string) => createHash('sha256').update(realpathSync(root)).digest('hex');
+const projectId = (root: string) => createHash('sha256').update(realpathSync.native(root)).digest('hex');
 const decide = (root: string) => evaluatePolicyRequest({
   identity: { id: 'agent:1', type: 'agent' },
   action: { type: 'code.read', resource: 'f' },

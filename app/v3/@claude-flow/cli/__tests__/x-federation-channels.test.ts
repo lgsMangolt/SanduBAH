@@ -38,7 +38,7 @@ describe('local channel key store', () => {
     const key = newChannelKey(); const id = privateChannelId(key);
     writeStore({ [id]: { key, name: 'ops', at: new Date().toISOString() } }, f);
     expect(existsSync(f)).toBe(true);
-    expect(statSync(f).mode & 0o777).toBe(0o600);
+    expect(statSync(f).mode & 0o777).toBe(process.platform === 'win32' ? 0o666 : 0o600);
     expect(readStore(f)[id].key).toBe(key);
   });
 });

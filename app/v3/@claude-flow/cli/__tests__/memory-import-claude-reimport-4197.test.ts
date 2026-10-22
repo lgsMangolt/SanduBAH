@@ -25,6 +25,7 @@ const importer = memoryTools.find(t => t.name === 'memory_import_claude')!;
 
 let home: string;
 let originalHome: string | undefined;
+let originalUserProfile: string | undefined;
 let originalCwd: string;
 let originalProject: string | undefined;
 const writeMemory = (contents: string) => {
@@ -35,11 +36,13 @@ const writeMemory = (contents: string) => {
 
 beforeEach(() => {
   originalHome = process.env.HOME;
+  originalUserProfile = process.env.USERPROFILE;
   originalCwd = process.cwd();
   originalProject = process.env.CLAUDE_FLOW_CWD;
   delete process.env.CLAUDE_FLOW_CWD;
   home = mkdtempSync(join(tmpdir(), 'ruflo-claude-reimport-4197-'));
   process.env.HOME = home;
+  process.env.USERPROFILE = home;
   layer.rows.clear();
 });
 afterEach(() => {
@@ -48,6 +51,8 @@ afterEach(() => {
   else process.env.CLAUDE_FLOW_CWD = originalProject;
   if (originalHome === undefined) delete process.env.HOME;
   else process.env.HOME = originalHome;
+  if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+  else process.env.USERPROFILE = originalUserProfile;
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -60,7 +65,7 @@ describe('memory_import_claude re-import (#4197)', () => {
     git(['init']);
     git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '-m', 'fixture']);
     git(['worktree', 'add', '--detach', linked]);
-    const slug = realpathSync(main).replace(/\//g, '-');
+    const slug = realpathSync.native(main).replace(/[:\\/]/g, '-').replace(/\s+/g, '-');
     const shared = join(home, '.claude', 'projects', slug, 'memory');
     mkdirSync(shared, { recursive: true });
     writeFileSync(join(shared, 'MEMORY.md'), `## Shared workflow\n${'main project memory '.repeat(15)}`);
@@ -76,7 +81,7 @@ describe('memory_import_claude re-import (#4197)', () => {
   it('resolves the configured MCP project instead of the server working directory', async () => {
     const project = join(home, 'configured-project');
     mkdirSync(project);
-    const slug = project.replace(/\//g, '-');
+    const slug = project.replace(/[:\\/]/g, '-').replace(/\s+/g, '-');
     const memory = join(home, '.claude', 'projects', slug, 'memory');
     mkdirSync(memory, { recursive: true });
     writeFileSync(join(memory, 'MEMORY.md'), `## Configuration\n${'configured project context '.repeat(15)}`);

@@ -27,6 +27,17 @@ import {
   type McpPolicy,
 } from '../src/mcp-tools/policy-enforcer.js';
 
+const logBlockers: string[] = [];
+function unwritableLogPath(): string {
+  const blocker = path.join(os.tmpdir(), `ruflo-audit-blocker-${randomUUID()}`);
+  fs.writeFileSync(blocker, 'not a directory');
+  logBlockers.push(blocker);
+  return path.join(blocker, 'audit.jsonl');
+}
+afterEach(() => {
+  for (const blocker of logBlockers.splice(0)) fs.unlinkSync(blocker);
+});
+
 describe('isPolicyEnforcementEnabled', () => {
   it('is disabled by default (unset env)', () => {
     expect(isPolicyEnforcementEnabled({})).toBe(false);
@@ -178,7 +189,7 @@ describe('appendAuditLog', () => {
   });
 
   it('never throws, and reports failure, when the log path is unwritable', () => {
-    setAuditLogPathForTesting('/nonexistent-dir-xyz/audit.jsonl');
+    setAuditLogPathForTesting(unwritableLogPath());
     let result: boolean | undefined;
     expect(() => {
       result = appendAuditLog({ auditLog: true }, {
@@ -225,14 +236,14 @@ describe('evaluateToolCall — single enforcement entry point (fail-closed)', ()
   });
 
   it('denies — fail-closed — when auditLog is required but the write fails, even though budget allows the call', () => {
-    setAuditLogPathForTesting('/nonexistent-dir-xyz/audit.jsonl');
+    setAuditLogPathForTesting(unwritableLogPath());
     const result = evaluateToolCall({ auditLog: true, maxToolCallsPerTurn: 5 }, 's1', 'memory_store');
     expect(result.allowed).toBe(false);
     expect(result.reason).toMatch(/audit log write failed.*failing closed/i);
   });
 
   it('does not require a working audit log when policy.auditLog is not set', () => {
-    setAuditLogPathForTesting('/nonexistent-dir-xyz/audit.jsonl');
+    setAuditLogPathForTesting(unwritableLogPath());
     const result = evaluateToolCall({ maxToolCallsPerTurn: 5 }, 's1', 'memory_store');
     expect(result.allowed).toBe(true);
   });
@@ -360,7 +371,7 @@ describe('MCPServerManager tools/call — policy wiring', () => {
 
   it('enabled + auditLog required but log path unwritable: denies — fail-closed even though budget would allow', async () => {
     process.env.RUFLO_MCP_ENFORCE_POLICY = '1';
-    setAuditLogPathForTesting('/nonexistent-dir-xyz/audit.jsonl');
+    setAuditLogPathForTesting(unwritableLogPath());
     const mod = await import('../src/mcp-tools/policy-enforcer.js');
     const spy = vi.spyOn(mod, 'loadMcpPolicy').mockReturnValue({ auditLog: true, maxToolCallsPerTurn: 100 });
     const { MCPServerManager } = await import('../src/mcp-server.js');

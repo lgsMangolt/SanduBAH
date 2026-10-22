@@ -18,6 +18,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as crypto from 'crypto';
+import { join } from 'node:path';
 
 // ============================================================================
 // 1. Plugin Manager
@@ -113,7 +114,7 @@ describe('PluginManager', () => {
   });
 
   it('should return correct plugins dir and manifest path', () => {
-    expect(manager.getPluginsDir()).toContain('.claude-flow/plugins');
+    expect(manager.getPluginsDir()).toContain(join('.claude-flow', 'plugins'));
     expect(manager.getManifestPath()).toContain('installed.json');
   });
 

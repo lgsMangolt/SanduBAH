@@ -50,7 +50,7 @@ const COPIES = [
 const SHARED = ['escapeCmdArg', 'resolveCommandPath', 'resolveNpmShim', 'resolveInvocation'] as const;
 
 function fnOf(source: string, name: string, label: string): string {
-  const m = new RegExp(`function ${name}\\([\\s\\S]*?\\n\\}`).exec(source);
+  const m = new RegExp(`function ${name}\\([\\s\\S]*?\\n\\}`).exec(source.replace(/\r\n/g, '\n'));
   if (!m) throw new Error(`no ${name}() in ${label} — the Windows argv fix is incomplete in this copy`);
   return m[0];
 }

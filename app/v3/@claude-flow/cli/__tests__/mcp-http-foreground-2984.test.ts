@@ -21,6 +21,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createConnection } from 'node:net';
+import { tmpdir } from 'node:os';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,12 +31,17 @@ const CLI = path.resolve(HERE, '..', 'bin', 'cli.js');
 const CLI_BUILT = fs.existsSync(CLI);
 
 let child: ChildProcessWithoutNullStreams | undefined;
+let workspace: string | undefined;
 
 afterEach(async () => {
   if (child && child.exitCode === null && child.signalCode === null) {
+    const stopped = new Promise<void>(resolve => child!.once('exit', () => resolve()));
     child.kill('SIGKILL');
+    await stopped;
   }
   child = undefined;
+  if (workspace) fs.rmSync(workspace, { recursive: true, force: true });
+  workspace = undefined;
 });
 
 function waitForOutput(proc: ChildProcessWithoutNullStreams, match: string, timeoutMs: number): Promise<void> {
@@ -73,8 +79,15 @@ describe.skipIf(!CLI_BUILT)('mcp start -t http stays running (#2984, end-to-end)
     const port = 39000 + Math.floor(Math.random() * 5000);
     const host = '127.0.0.1';
 
-    child = spawn('node', [CLI, 'mcp', 'start', '-t', 'http', '--port', String(port), '--host', host], {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    workspace = fs.mkdtempSync(path.join(tmpdir(), 'ruflo-http-foreground-'));
+    const preload = path.join(workspace, 'signal-fixture.cjs');
+    fs.writeFileSync(preload, "process.on('message', message => { if (message === 'fixture-sigterm') process.emit('SIGTERM'); });\n");
+    const prefix = process.platform === 'win32' ? ['--require', preload] : [];
+    child = spawn(process.execPath, [...prefix, CLI, 'mcp', 'start', '-t', 'http', '--port', String(port), '--host', host], {
+      cwd: workspace,
+      env: { ...process.env, TMPDIR: workspace, TEMP: workspace, TMP: workspace },
+      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      windowsHide: true,
     });
 
     await waitForOutput(child, 'MCP Server started', 20_000);
@@ -92,7 +105,8 @@ describe.skipIf(!CLI_BUILT)('mcp start -t http stays running (#2984, end-to-end)
     const exited = new Promise<number | null>((resolve) => {
       child!.once('exit', (code) => resolve(code));
     });
-    child.kill('SIGTERM');
+    if (process.platform === 'win32') child.send('fixture-sigterm');
+    else child.kill('SIGTERM');
     const code = await Promise.race([
       exited,
       new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 5000)),

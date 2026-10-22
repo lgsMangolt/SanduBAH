@@ -1,18 +1,23 @@
 import './helpers/isolated-policy-trust.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { appendFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, linkSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { policyTrustRoot } from '../src/services/policy-ledger-anchor.js';
 import { acquireLock, autoMigratePolicyStateIfNeeded, evaluatePolicyRequest, verifyPolicyLedger, withPolicyTransaction } from '../src/services/policy-runtime.js';
 
-const io = vi.hoisted(() => ({ events: [] as string[], files: new Map<number, string>(), failSync: false, failState: false, failRenameSuffix: '', failStateDirSync: false, failAnchorStream: false }));
+const io = vi.hoisted(() => ({ events: [] as string[], files: new Map<number, string>(), linkedFiles: new Set<string>(), failSync: false, failState: false, failRenameSuffix: '', failStateDirSync: false, failAnchorStream: false }));
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
+    lstatSync: (...args: Parameters<typeof actual.lstatSync>) => {
+      const stats = actual.lstatSync(...args);
+      if (!stats || !io.linkedFiles.has(String(args[0]))) return stats;
+      return Object.assign(Object.create(stats), { isSymbolicLink: () => true, isFile: () => false });
+    },
     openSync: (...args: Parameters<typeof actual.openSync>) => { const fd = actual.openSync(...args); io.files.set(fd, String(args[0])); return fd; },
     closeSync: (fd: number) => { io.files.delete(fd); return actual.closeSync(fd); },
     fsyncSync: (fd: number) => {
@@ -30,7 +35,9 @@ vi.mock('node:fs', async (importOriginal) => {
       io.events.push(`rename:${to}`);
       if (io.failRenameSuffix && to.endsWith(io.failRenameSuffix)) throw new Error('injected anchor publication failure');
       if (io.failState && to.endsWith('state.json')) throw Object.assign(new Error('injected state publication failure'), { code: 'EIO' });
-      return actual.renameSync(from, to);
+      const result = actual.renameSync(from, to);
+      if (process.platform === 'win32' && io.failStateDirSync && to.endsWith('state.json')) throw new Error('injected post-state publication failure');
+      return result;
     },
   };
 });
@@ -53,8 +60,9 @@ async function ledger(signed = false) {
 function records(project: string) { return readFileSync(archive(project), 'utf8').trim().split('\n').map(line => JSON.parse(line)); }
 afterEach(() => {
   io.failSync = io.failState = io.failStateDirSync = io.failAnchorStream = false; io.failRenameSuffix = ''; io.events.length = 0;
+  io.linkedFiles.clear();
   for (const project of roots.splice(0)) {
-    const id = createHash('sha256').update(realpathSync(project)).digest('hex');
+    const id = createHash('sha256').update(realpathSync.native(project)).digest('hex');
     rmSync(join(policyTrustRoot(), id), { recursive: true, force: true });
     rmSync(project, { recursive: true, force: true });
   }
@@ -135,7 +143,12 @@ describe('state-backed torn append recovery', () => {
   it('does not truncate a symlink target', async () => {
     const project = await ledger(); const outside = join(project, 'outside-ledger');
     writeFileSync(outside, readFileSync(archive(project))); appendFileSync(outside, '{"unknown":');
-    unlinkSync(archive(project)); symlinkSync(outside, archive(project)); const before = readFileSync(outside);
+    unlinkSync(archive(project));
+    if (process.platform === 'win32') {
+      linkSync(outside, archive(project));
+      io.linkedFiles.add(archive(project));
+    } else symlinkSync(outside, archive(project));
+    const before = readFileSync(outside);
     await expect(decide(project, 6)).rejects.toThrow(); expect(readFileSync(outside)).toEqual(before);
   });
 });
@@ -146,12 +159,13 @@ describe('durable publication and retry', () => {
     const archiveSync = io.events.indexOf(`sync:${archive(project)}`); const stateRename = io.events.indexOf(`rename:${state(project)}`);
     expect(archiveSync).toBeGreaterThanOrEqual(0); expect(stateRename).toBeGreaterThan(archiveSync);
     expect(io.events.slice(0, stateRename).some(event => event.startsWith(`sync:${state(project)}.`))).toBe(true);
-    expect(io.events[stateRename + 1]).toBe(`sync:${dir(project)}`);
+    if (process.platform !== 'win32') expect(io.events[stateRename + 1]).toBe(`sync:${dir(project)}`);
     const anchorRename = io.events.indexOf(`rename:${join(dir(project), 'ledger-anchors.json')}`);
-    expect(anchorRename).toBeGreaterThan(stateRename); expect(io.events[anchorRename + 1]).toBe(`sync:${dir(project)}`);
-    const mirrorRename = io.events.findIndex(event => event.endsWith('/ledger-anchor-head.json') && event.startsWith('rename:'));
+    expect(anchorRename).toBeGreaterThan(stateRename);
+    if (process.platform !== 'win32') expect(io.events[anchorRename + 1]).toBe(`sync:${dir(project)}`);
+    const mirrorRename = io.events.findIndex(event => event.endsWith('ledger-anchor-head.json') && event.startsWith('rename:'));
     expect(mirrorRename).toBeGreaterThan(anchorRename);
-    expect(io.events[mirrorRename + 1]).toBe(`sync:${io.events[mirrorRename].slice(7).replace(/\/ledger-anchor-head.json$/, '')}`);
+    if (process.platform !== 'win32') expect(io.events[mirrorRename + 1]).toBe(`sync:${dirname(io.events[mirrorRename].slice(7))}`);
   });
   it.each(['complete', 'missing-extension'])('a lagging mirror requires the entire newly archived extension (%s)', async mode => {
     const project = await ledger(); io.failRenameSuffix = 'ledger-anchor-head.json';

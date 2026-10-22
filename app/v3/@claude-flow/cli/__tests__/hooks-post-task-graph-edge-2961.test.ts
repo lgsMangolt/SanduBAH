@@ -56,6 +56,8 @@ describe.skipIf(!CLI_BUILT)('#2961 hooks post-task (CLI) writes the reinforced-b
       // await resolves — this is exactly 0 every time, not flaky.
       expect(count).toBeGreaterThan(0);
     } finally {
+      const { _resetBridgeDb } = await import('../src/memory/graph-edge-writer.js');
+      _resetBridgeDb();
       rmSync(cwd, { recursive: true, force: true });
     }
   }, 60_000);

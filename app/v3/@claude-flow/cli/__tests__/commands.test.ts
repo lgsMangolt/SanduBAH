@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { agentCommand } from '../src/commands/agent.js';
@@ -12,6 +12,12 @@ import { swarmCommand } from '../src/commands/swarm.js';
 import { memoryCommand } from '../src/commands/memory.js';
 import { configCommand } from '../src/commands/config.js';
 import type { CommandContext } from '../src/types.js';
+
+vi.mock('../src/memory/memory-initializer.js', () => ({
+  resolveDbPath: (file?: string) => file ?? 'fixture-memory.db',
+  searchEntries: vi.fn(async () => ({ success: true, results: [{ key: 'result-1', namespace: 'test', content: 'auth pattern 1', score: 0.95 }], searchTime: 0 })),
+  listEntries: vi.fn(async () => ({ success: true, entries: [{ key: 'entry-1', namespace: 'test', size: 100, hasEmbedding: false, accessCount: 1, updatedAt: 1 }], total: 1 })),
+}));
 
 // Mock MCP client
 vi.mock('../src/mcp-client.js', () => ({
@@ -679,10 +685,11 @@ describe('Config Commands', () => {
     ctx = {
       args: [],
       flags: { _: [] },
-      cwd: '/test',
+      cwd: mkdtempSync(join(tmpdir(), 'ruflo-command-config-')),
       interactive: false
     };
   });
+  afterEach(() => rmSync(ctx.cwd, { recursive: true, force: true }));
 
   describe('config init', () => {
     it('should initialize configuration', async () => {
@@ -691,9 +698,8 @@ describe('Config Commands', () => {
 
       const result = await initCmd!.action!(ctx);
 
-      // #1425: config init is not yet implemented
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.success).toBe(true);
+      expect(existsSync(join(ctx.cwd, 'claude-flow.config.json'))).toBe(true);
     });
 
     it('should initialize with V3 mode', async () => {
@@ -702,9 +708,8 @@ describe('Config Commands', () => {
       ctx.flags = { v3: true, _: [] };
       const result = await initCmd!.action!(ctx);
 
-      // #1425: config init is not yet implemented
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.success).toBe(true);
+      expect(existsSync(join(ctx.cwd, 'claude-flow.config.json'))).toBe(true);
     });
   });
 
@@ -738,9 +743,8 @@ describe('Config Commands', () => {
       ctx.flags = { key: 'swarm.maxAgents', value: '20', _: [] };
       const result = await setCmd!.action!(ctx);
 
-      // #1425: config set is not yet implemented
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.success).toBe(true);
+      expect(JSON.parse(readFileSync(join(ctx.cwd, 'claude-flow.config.json'), 'utf8')).swarm.maxAgents).toBe(20);
     });
 
     it('should fail without key and value', async () => {
@@ -772,9 +776,8 @@ describe('Config Commands', () => {
       ctx.flags = { force: true, _: [] };
       const result = await resetCmd!.action!(ctx);
 
-      // #1425: config reset is not yet implemented
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.success).toBe(true);
+      expect(existsSync(join(ctx.cwd, 'claude-flow.config.json'))).toBe(true);
     });
   });
 
@@ -785,9 +788,8 @@ describe('Config Commands', () => {
 
       const result = await exportCmd!.action!(ctx);
 
-      // #1425: config export is not yet implemented
-      expect(result.success).toBe(false);
-      expect(result.exitCode).toBe(1);
+      expect(result.success).toBe(true);
+      expect(existsSync(join(ctx.cwd, 'claude-flow.config.export.json'))).toBe(true);
     });
   });
 

@@ -14,7 +14,7 @@
 // Baseline (pre-fix) fails every assertion below; candidate (post-fix)
 // passes all of them. See docs/dream-cycle/dream-gist-2026-09-12.md.
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -59,7 +59,15 @@ beforeAll(() => {
   mkdirSync(join(SCRATCH, '.claude-flow'), { recursive: true });
 });
 
-afterAll(() => {
+afterEach(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.flushPatterns();
+  intel.flushIntelligenceStats();
+});
+
+afterAll(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.clearIntelligence();
   try { process.chdir(originalCwd); } catch { /* best-effort */ }
   try { rmSync(SCRATCH, { recursive: true, force: true }); } catch { /* best-effort */ }
 });

@@ -9,6 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { resolveNpmLaunch } from '../runtime/browser-command.js';
 import {
   evaluatePluginTrust,
   parseSha256Checksum,
@@ -20,19 +21,10 @@ import {
 
 const execFileAsync = promisify(execFile);
 
-// On Windows, `npm` is a shell script (no `.exe`) and `npm.cmd` is a batch
-// wrapper. Since Node 18.20.2 / 20.12.2 (CVE-2024-27980) the runtime refuses
-// to spawn `.cmd`/`.bat` files directly and throws `spawn EINVAL` — the only
-// supported invocation is via a real `.exe` shell. We wrap every npm call
-// through `cmd.exe /d /s /c npm <args>`, which keeps Node's safe array-form
-// argument escaping intact and avoids both ENOENT and EINVAL.
-const isWindows = process.platform === 'win32';
-
 function runNpm(args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
-  if (isWindows) {
-    return execFileAsync('cmd.exe', ['/d', '/s', '/c', 'npm', ...args], { timeout: timeoutMs });
-  }
-  return execFileAsync('npm', args, { timeout: timeoutMs });
+  const launch = resolveNpmLaunch();
+  if (!launch) return Promise.reject(new Error('npm JavaScript entry point could not be resolved without a shell'));
+  return execFileAsync(launch.command, [...launch.argsPrefix, ...args], { timeout: timeoutMs, windowsHide: true });
 }
 
 /**

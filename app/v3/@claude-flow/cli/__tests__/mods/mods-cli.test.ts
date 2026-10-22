@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 import { installMod, readRecord, uninstallMod, withModEnabled, withModRemoved, ENABLE_ENV, MOD_PLUGIN_ID, MOD_PLUGIN_IDS } from '../../src/mods/install.js';
 import { projectionOf, syncPolicyProjection, PROJECTION_RELATIVE } from '../../src/mods/policy-projection.js';
@@ -245,7 +245,7 @@ describe('ADR-404 claude installs', () => {
     try {
       writeFileSync(join(a, 'claude'), '');
       writeFileSync(join(b, 'claude'), '');
-      const found = findClaudeInstalls({ PATH: [a, b, a].join(':') }, join(a, 'nohome'), (p) => (p.startsWith(a) ? '2.1.107' : '2.1.287'));
+      const found = findClaudeInstalls({ PATH: [a, b, a].join(delimiter) }, join(a, 'nohome'), (p) => (p.startsWith(a) ? '2.1.107' : '2.1.287'));
       expect(found).toEqual([at(join(a, 'claude'), '2.1.107'), at(join(b, 'claude'), '2.1.287')]);
     } finally {
       rmSync(a, { recursive: true, force: true });

@@ -178,7 +178,7 @@ async function canonicalize(resolvedPath: string): Promise<string> {
  */
 function canonicalizeSync(resolvedPath: string): string {
   try {
-    return realpathSync(resolvedPath);
+    return realpathSync.native(resolvedPath);
   } catch (error: any) {
     if (error?.code !== 'ENOENT') {
       return resolvedPath;

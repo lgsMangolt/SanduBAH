@@ -33,7 +33,7 @@ function project(): string {
   // (realpathSync), so hash the same thing here — on macOS tmpdir() sits
   // behind a symlink, so hashing the raw path pointed this test (and its
   // cleanup) at a directory that is never created, leaking real anchors.
-  const projectId = createHash('sha256').update(realpathSync(root)).digest('hex');
+  const projectId = createHash('sha256').update(realpathSync.native(root)).digest('hex');
   roots.push({
     root,
     trust: join(policyTrustRoot(), projectId),
@@ -188,7 +188,7 @@ describe('policy runtime compatibility and transactions', () => {
     await autoMigratePolicyStateIfNeeded(root);
     await setPolicyMode('enforce', root);
     const alias = `${root}-alias`;
-    symlinkSync(root, alias);
+    symlinkSync(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
     try {
       expect(loadPolicyState(alias).mode).toBe('enforce');
     } finally {

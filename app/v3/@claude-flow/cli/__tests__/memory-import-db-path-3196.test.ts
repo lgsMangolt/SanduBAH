@@ -2,7 +2,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 const mocks = vi.hoisted(() => ({
   callMCPTool: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('../src/mcp-client.js', () => ({
 }));
 
 vi.mock('../src/memory/memory-initializer.js', () => ({
-  resolveDbPath: (path?: string) => path || '/project/.swarm/memory.db',
+  resolveDbPath: (path?: string) => path || resolve('/project/.swarm/memory.db'),
   checkMemoryInitialization: mocks.checkMemoryInitialization,
   initializeMemoryDatabase: mocks.initializeMemoryDatabase,
   storeEntry: mocks.storeEntry,
@@ -58,10 +58,10 @@ describe('memory import database selection', () => {
     expect(importCommand.options?.some(option => option.name === 'path')).toBe(true);
     await importCommand.action!({
       args: [],
-      flags: { input: importPath, path: '/project/custom.db' },
+      flags: { input: importPath, path: resolve('/project/custom.db') },
     } as any);
     expect(mocks.callMCPTool).toHaveBeenCalledWith('memory_import', expect.objectContaining({
-      dbPath: '/project/custom.db',
+      dbPath: resolve('/project/custom.db'),
     }));
   });
 
@@ -71,19 +71,19 @@ describe('memory import database selection', () => {
       flags: { input: importPath },
     } as any);
     expect(mocks.callMCPTool).toHaveBeenCalledWith('memory_import', expect.objectContaining({
-      dbPath: '/project/.swarm/memory.db',
+      dbPath: resolve('/project/.swarm/memory.db'),
     }));
   });
 
   it('initializes and writes the selected file rather than the bridge fallback', async () => {
     const result = await importTool.handler({
       inputPath: importPath,
-      dbPath: '/project/custom.db',
+      dbPath: resolve('/project/custom.db'),
     }) as { imported: { entries: number }; skipped: number };
-    expect(mocks.checkMemoryInitialization).toHaveBeenCalledWith('/project/custom.db');
-    expect(mocks.initializeMemoryDatabase).toHaveBeenCalledWith(expect.objectContaining({ dbPath: '/project/custom.db' }));
+    expect(mocks.checkMemoryInitialization).toHaveBeenCalledWith(resolve('/project/custom.db'));
+    expect(mocks.initializeMemoryDatabase).toHaveBeenCalledWith(expect.objectContaining({ dbPath: resolve('/project/custom.db') }));
     expect(mocks.storeEntry).toHaveBeenCalledWith(expect.objectContaining({
-      key: 'remember-me', dbPath: '/project/custom.db',
+      key: 'remember-me', dbPath: resolve('/project/custom.db'),
     }));
     expect(result.imported.entries).toBe(1);
   });
@@ -92,7 +92,7 @@ describe('memory import database selection', () => {
     mocks.storeEntry.mockResolvedValue({ success: false, error: 'database unavailable' });
     const result = await importTool.handler({
       inputPath: importPath,
-      dbPath: '/project/custom.db',
+      dbPath: resolve('/project/custom.db'),
     }) as { success: boolean; imported: { entries: number }; skipped: number; failed: number; error?: string };
     expect(result.imported.entries).toBe(0);
     expect(result.success).toBe(false);

@@ -420,7 +420,9 @@ describe('MCPServerManager: a PID is liveness evidence, not identity (#3364)', (
     // Pre-existing guard (isProcessRunning's process-name check), pinned here
     // because it is the other half of non-owned-process protection and a
     // bare-integer record — an older ruflo's — has nothing else to go on.
-    const stranger = spawn('/bin/sleep', ['60'], { stdio: 'ignore' });
+    const stranger = process.platform === 'win32'
+      ? spawn(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'ping.exe'), ['-n', '60', '127.0.0.1'], { stdio: 'ignore', windowsHide: true })
+      : spawn('/bin/sleep', ['60'], { stdio: 'ignore' });
     try {
       await vi.waitFor(() => expect(stranger.pid).toBeDefined());
       fs.writeFileSync(h.pidFile, String(stranger.pid));
@@ -435,7 +437,11 @@ describe('MCPServerManager: a PID is liveness evidence, not identity (#3364)', (
     // commands/mcp.ts only ever kills `(await getMCPServerStatus()).pid`. With
     // no live owned server there is no pid, so the kill branch cannot run.
     const originalTmp = process.env.TMPDIR;
+    const originalTemp = process.env.TEMP;
+    const originalTmpWindows = process.env.TMP;
     process.env.TMPDIR = h.dir; // the default pidFile is os.tmpdir()/claude-flow-mcp.pid
+    process.env.TEMP = h.dir;
+    process.env.TMP = h.dir;
     try {
       vi.resetModules();
       const mod = await vi.importActual<typeof import('../src/mcp-server.js')>('../src/mcp-server.js');
@@ -448,6 +454,10 @@ describe('MCPServerManager: a PID is liveness evidence, not identity (#3364)', (
     } finally {
       if (originalTmp === undefined) delete process.env.TMPDIR;
       else process.env.TMPDIR = originalTmp;
+      if (originalTemp === undefined) delete process.env.TEMP;
+      else process.env.TEMP = originalTemp;
+      if (originalTmpWindows === undefined) delete process.env.TMP;
+      else process.env.TMP = originalTmpWindows;
     }
   });
 });
@@ -469,7 +479,7 @@ describe('MCPServerManager: Windows lifecycle, derived not measured (#3364)', ()
   const h = useManagerHarness();
 
   it('a record written on Windows is not believed on this host', async () => {
-    fs.writeFileSync(h.pidFile, record(sibling.pid!, { platform: 'win32' }));
+    fs.writeFileSync(h.pidFile, record(sibling.pid!, { platform: process.platform === 'win32' ? 'linux' : 'win32' }));
     await expect(h.create('stdio').getStatus()).resolves.toEqual({ running: false });
     expect(siblingAlive()).toBe(true);
   });

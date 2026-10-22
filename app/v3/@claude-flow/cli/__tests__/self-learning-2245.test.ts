@@ -15,7 +15,7 @@
 // breaks the build.
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -29,11 +29,16 @@ let originalCwd: string;
 beforeAll(async () => {
   originalCwd = process.cwd();
   process.chdir(SCRATCH);
+  mkdirSync(join(SCRATCH, '.claude-flow'), { recursive: true });
   const intel = await import('../src/memory/intelligence.js');
   intel.clearIntelligence();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  const intel = await import('../src/memory/intelligence.js');
+  intel.flushPatterns();
+  intel.flushIntelligenceStats();
+  intel.clearIntelligence();
   // Restore the original CWD so other test files aren't affected.
   try { process.chdir(originalCwd); } catch { /* best-effort */ }
   try { rmSync(SCRATCH, { recursive: true, force: true }); } catch { /* best-effort */ }
@@ -162,6 +167,7 @@ describe('COMPLEX — end-to-end learning behavior (#2245)', () => {
     intel.recordSignalProcessed();
     intel.flushIntelligenceStats();
     // Force module reload to simulate "fresh process"
+    intel.flushPatterns();
     (intel as any).clearIntelligence();
     // The loader runs on next initializeIntelligence(); but we can also just
     // re-read the persisted JSON file directly to prove it was saved.

@@ -122,3 +122,23 @@ export function resolveNpxLaunch(options: BrowserLaunchOptions = {}): BrowserLau
   }
   return null;
 }
+
+export function resolveNpmLaunch(options: BrowserLaunchOptions = {}): BrowserLaunch | null {
+  const configuration = defaults(options);
+  if (configuration.platform !== 'win32') return { command: 'npm', argsPrefix: [] };
+  const adjacent = configuration.path.join(configuration.path.dirname(configuration.nodeExecutable), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  if (configuration.fileExists(adjacent)) return { command: configuration.nodeExecutable, argsPrefix: [adjacent] };
+  for (const shim of whereAll(configuration.lookup, 'npm')) {
+    if (!configuration.path.isAbsolute(shim)) continue;
+    const directory = configuration.path.dirname(shim);
+    if (configuration.path.resolve(directory) === configuration.path.resolve(process.cwd())) continue;
+    const candidates = [configuration.path.join(directory, 'node_modules', 'npm', 'bin', 'npm-cli.js')];
+    try {
+      const match = configuration.readFile(shim).match(/%~dp0[\\/]([^"\r\n]*?npm[\\/]bin[\\/]npm-cli\.js)/i);
+      if (match) candidates.push(configuration.path.resolve(directory, match[1]));
+    } catch {}
+    const entry = candidates.find(candidate => configuration.fileExists(candidate));
+    if (entry) return { command: configuration.nodeExecutable, argsPrefix: [entry] };
+  }
+  return null;
+}

@@ -27,9 +27,10 @@
  */
 import { decodeLedgerRecord, policyLedgerRecordLimit } from './policy-ledger-record.js';
 import { reverseArchiveRecords } from './policy-archive-scan.js';
+import { openRegularLedgerFile } from './policy-file.js';
 import { anchorEntries, appendedAnchorLog, type AtomicJsonSource } from './policy-anchor-log.js';
 import { createHash } from 'node:crypto';
-import { closeSync, constants as fsConstants, fstatSync, existsSync, mkdtempSync, chmodSync, openSync, readFileSync, readSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, constants as fsConstants, fstatSync, existsSync, lstatSync, mkdtempSync, chmodSync, openSync, readFileSync, readdirSync, readSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { homedir, tmpdir, userInfo } from 'node:os';
 import { AgenticPolicyEngine, canonicalizePolicy, type PolicyState } from '@claude-flow/security/policy/index';
@@ -75,6 +76,8 @@ export const anchorLogPath = (projectRoot: string): string => join(resolve(proje
  * drop the HMAC key and anchor mirror into the project; that is never wanted, so it falls back to the account home or refuses.
  */
 function trustHome(): string {
+  const configuredHome = process.env.HOME;
+  if (configuredHome && isAbsolute(configuredHome)) return configuredHome;
   const home = homedir();
   if (home && isAbsolute(home)) return home;
   let account = '';
@@ -98,9 +101,54 @@ export function policyTrustRoot(): string {
   return !existsSync(preferred) && existsSync(legacy) ? legacy : preferred;
 }
 
+export function policyProjectId(projectRoot: string, trustRoot = policyTrustRoot()): string {
+  const canonical = realpathSync.native(projectRoot);
+  const id = createHash('sha256').update(canonical).digest('hex');
+  try {
+    const current = lstatSync(join(trustRoot, id, 'state.anchor.json'));
+    if (!current.isFile() || current.isSymbolicLink()) throw new Error('policy-trust-record-invalid');
+    return id;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+  let entries: import('node:fs').Dirent[];
+  try { entries = readdirSync(trustRoot, { withFileTypes: true }); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return id;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (entry.name === id || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
+    if (entry.isSymbolicLink()) throw new Error('policy-trust-record-invalid');
+    if (!entry.isDirectory()) continue;
+    let descriptor: number;
+    try { descriptor = openRegularLedgerFile(join(trustRoot, entry.name, 'state.anchor.json'), fsConstants.O_RDONLY); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
+    let record: { projectRoot?: unknown };
+    try {
+      const bytes = Buffer.alloc(65537);
+      const count = readSync(descriptor, bytes, 0, bytes.length, 0);
+      if (count > 65536) throw new Error('policy-trust-record-invalid');
+      record = JSON.parse(bytes.subarray(0, count).toString('utf8'));
+      if (!record || typeof record.projectRoot !== 'string' || !isAbsolute(record.projectRoot)) throw new Error('policy-trust-record-invalid');
+    } finally { closeSync(descriptor); }
+    let legacyRoot: string;
+    try { legacyRoot = realpathSync.native(record.projectRoot as string); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw error;
+    }
+    if (legacyRoot === canonical) throw new Error('policy-trust-migration-required');
+  }
+  return id;
+}
+
 function mirrorPath(projectRoot: string): string {
-  const id = createHash('sha256').update(realpathSync(projectRoot)).digest('hex');
-  return join(policyTrustRoot(), id, MIRROR_FILE);
+  const trustRoot = policyTrustRoot();
+  return join(trustRoot, policyProjectId(projectRoot, trustRoot), MIRROR_FILE);
 }
 
 // Duplicated from policy-runtime.ts's RECEIPT_ARCHIVE_FILE rather than
@@ -147,7 +195,7 @@ const TAIL_READ_INITIAL_BYTES = 64 * 1024;
 function archiveHasTailReceipt(filePath: string, expectedSequence: number, expectedHash: string, from?: { sequence: number; hash: string }): boolean {
   if (!existsSync(filePath) || !Number.isSafeInteger(expectedSequence) || expectedSequence < 0) return false;
   let fd: number;
-  try { fd = openSync(filePath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0)); } catch { return false; }
+  try { fd = openRegularLedgerFile(filePath, fsConstants.O_RDONLY); } catch { return false; }
   let scratch: string | undefined;
   try {
     const stat = fstatSync(fd);
@@ -406,7 +454,7 @@ export function assessAnchors(projectRoot: string, state: PolicyState, rebuild =
   try { return assessAnchorsChecked(projectRoot, state, rebuild); }
   catch (error) {
     const message = (error as Error).message;
-    return { kind: 'fail', error: message.startsWith('policy-ledger-') ? message : 'policy-ledger-archive-read-error' };
+    return { kind: 'fail', error: message.startsWith('policy-ledger-') || message.startsWith('policy-trust-') ? message : 'policy-ledger-archive-read-error' };
   }
 }
 
@@ -426,6 +474,7 @@ export async function recordAnchor(
 ): Promise<void> {
   const length = fullLength(state);
   if (length === 0) return;
+  const mirror = mirrorPath(projectRoot);
   const cached = assessedTip && assessedLogs.get(assessedTip);
   if (assessedTip) assessedLogs.delete(assessedTip);
   // Reuse only for an actual append through the production streaming writer.
@@ -469,7 +518,6 @@ export async function recordAnchor(
     }
   }
   try {
-    const mirror = mirrorPath(projectRoot);
     await write(mirror, tip);
   } catch (error) {
     // A read-only home must not stop the ledger; verify reports the weaker

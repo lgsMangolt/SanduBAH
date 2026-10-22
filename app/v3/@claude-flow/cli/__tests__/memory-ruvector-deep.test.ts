@@ -16,6 +16,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // =============================================================================
 // Memory Initializer
@@ -328,9 +331,24 @@ describe('Memory Initializer', () => {
 // =============================================================================
 
 describe('Intelligence Module', () => {
+  let scratch: string;
+  let originalCwd: string;
   beforeEach(async () => {
+    originalCwd = process.cwd();
+    scratch = mkdtempSync(join(tmpdir(), 'deep-intelligence-'));
+    mkdirSync(join(scratch, '.claude-flow'));
+    process.chdir(scratch);
     const { clearIntelligence } = await import('../src/memory/intelligence.js');
     clearIntelligence();
+  });
+
+  afterEach(async () => {
+    const intelligence = await import('../src/memory/intelligence.js');
+    intelligence.flushPatterns();
+    intelligence.flushIntelligenceStats();
+    intelligence.clearIntelligence();
+    process.chdir(originalCwd);
+    rmSync(scratch, { recursive: true, force: true });
   });
 
   describe('initializeIntelligence', () => {
@@ -576,15 +594,21 @@ describe.skipIf(__SKIP_WASM_TESTS)('SONA Optimizer', () => {
 
 describe('EWC Consolidation', () => {
   let consolidator: any;
+  let scratch: string;
 
   beforeEach(async () => {
+    scratch = mkdtempSync(join(tmpdir(), 'deep-ewc-'));
     const { EWCConsolidator } = await import('../src/memory/ewc-consolidation.js');
     consolidator = new EWCConsolidator({
       lambda: 0.4,
       dimensions: 8,
       maxPatterns: 100,
-      storagePath: '/tmp/ewc-test-fisher.json',
+      storagePath: join(scratch, 'ewc-fisher.json'),
     });
+  });
+
+  afterEach(() => {
+    rmSync(scratch, { recursive: true, force: true });
   });
 
   describe('computeFisherMatrix', () => {

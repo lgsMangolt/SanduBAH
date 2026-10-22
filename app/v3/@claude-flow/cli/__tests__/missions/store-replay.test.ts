@@ -11,8 +11,17 @@ import { MissionService, MissionStore, parseLog, replay } from '../../src/missio
 import { plan } from './helpers.js';
 
 let root: string;
+let writer: ReturnType<typeof spawn> | undefined;
 beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'ruflo-missions-store-')); });
-afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+afterEach(async () => {
+  if (writer?.pid && writer.exitCode === null && writer.signalCode === null) {
+    const exited = new Promise<void>(done => writer!.once('exit', () => done()));
+    writer.kill('SIGKILL');
+    await exited;
+  }
+  writer = undefined;
+  rmSync(root, { recursive: true, force: true });
+});
 
 async function seeded(): Promise<{ service: MissionService; store: MissionStore; missionId: string; revision: number }> {
   const service = new MissionService({ projectRoot: root, channel: 'cli' });
@@ -76,22 +85,34 @@ describe('mission store', () => {
 
   it('survives SIGKILL of a writer mid-stream: state reconstructs and the next writer continues', async () => {
     const child = spawn(process.execPath, ['--import', 'tsx', resolve(__dirname, 'kill-writer.ts'), root], {
-      cwd: resolve(__dirname, '../..'), stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: resolve(__dirname, '../..'), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
     });
+    writer = child;
     let missionId = '';
     let stderr = '';
+    let stdout = '';
     child.stderr.on('data', (d) => { stderr += String(d); });
     await new Promise<void>((done, fail) => {
-      child.stdout.on('data', (d) => { const m = String(d).match(/ready (msn_[a-f0-9]{24})/); if (m) { missionId = m[1]; done(); } });
+      child.stdout.on('data', chunk => {
+        stdout += String(chunk);
+        const match = stdout.match(/ready (msn_[a-f0-9]{24})/);
+        if (match) { missionId = match[1]; done(); }
+      });
+      child.once('error', fail);
       child.on('exit', (code) => fail(new Error(`writer exited early (${code}): ${stderr}`)));
     });
     const store = new MissionStore(root);
-    const deadline = Date.now() + 20_000;
-    while (store.readLog(missionId).events.length < 25 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
-    child.kill('SIGKILL');
-    await new Promise((r) => child.on('exit', r));
+    const owner = JSON.parse(readFileSync(join(store.missionDir(missionId), 'lock'), 'utf8'));
+    expect(owner).toMatchObject({ pid: child.pid, platform: process.platform });
+    expect(owner.nonce).toMatch(/^[a-f0-9-]{36}$/);
+    expect(store.readLog(missionId).events.length).toBeGreaterThanOrEqual(25);
+    expect(store.readLog(missionId).tornTail).toBe(true);
+    const exited = new Promise<void>(done => child.once('exit', () => done()));
+    expect(child.kill('SIGKILL')).toBe(true);
+    await exited;
 
     const log = store.readLog(missionId);
+    expect(log.tornTail).toBe(true);
     expect(log.events.length).toBeGreaterThanOrEqual(25);
     const view = store.loadView(missionId, log)!;
     expect(JSON.parse(JSON.stringify(view))).toEqual(JSON.parse(JSON.stringify(replay(log.events))));
@@ -99,7 +120,7 @@ describe('mission store', () => {
     // The killed writer may have died holding the lock; a new writer recovers it.
     const service = new MissionService({ projectRoot: root, channel: 'mcp' });
     const r = await service.plan({ requestId: 'after-kill', missionId, expectedRevision: view.record.revision, plan: plan({ budget: { currency: 'USD', ceilingMinor: 99_999 } }) });
-    expect(r.ok).toBe(true);
+    expect(r.ok, JSON.stringify(r)).toBe(true);
     expect(store.readLog(missionId).tornTail).toBe(false);
     expect(existsSync(join(root, '.claude-flow', 'missions', 'observation.json'))).toBe(true);
   }, 60_000);

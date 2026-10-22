@@ -244,7 +244,7 @@ export function writeCatalog(path: string, catalog: CommandCatalog, expectedSha2
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.${process.pid}.tmp`;
   writeFileSync(tmp, text, { mode: 0o644 });
-  const fd = openSync(tmp, 'r');
+  const fd = openSync(tmp, 'r+');
   try { fsyncSync(fd); } finally { closeSync(fd); }
   renameSync(tmp, path);
   return { written: true, sha256: next };
