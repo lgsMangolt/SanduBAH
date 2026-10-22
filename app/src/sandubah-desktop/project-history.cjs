@@ -38,7 +38,7 @@ class ProjectHistory{
     const {gitDir,hooks,workspace}=this.paths(id),env={...process.env,GIT_TERMINAL_PROMPT:'0',GIT_OPTIONAL_LOCKS:'0',LC_ALL:'C'};
     for(const name of ['GIT_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_OBJECT_DIRECTORY','GIT_CONFIG','GIT_CONFIG_PARAMETERS'])delete env[name];
     const protocols=['-c','protocol.allow=never',...this.protocols.flatMap(name=>['-c',`protocol.${name}.allow=always`])];
-    return {args:['-c',`core.hooksPath=${hooks}`,'-c','core.fsmonitor=false','-c','core.autocrlf=false','-c','core.quotepath=false',...protocols,'--git-dir',gitDir,'--work-tree',workspace,...args],options:{cwd:workspace,env,windowsHide:true,shell:false}};
+    return {args:['-c',`core.hooksPath=${hooks}`,'-c','core.longpaths=true','-c','core.fsmonitor=false','-c','core.autocrlf=false','-c','core.quotepath=false',...protocols,'--git-dir',gitDir,'--work-tree',workspace,...args],options:{cwd:workspace,env,windowsHide:true,shell:false}};
   }
   run(id,args,{allowFail=false}={}){
     const call=this.invocation(id,args);
@@ -52,7 +52,8 @@ class ProjectHistory{
     const {gitDir,hooks,workspace}=this.paths(id);mkdirSync(workspace,{recursive:true});mkdirSync(hooks,{recursive:true});
     if(existsSync(join(workspace,'.git')))throw new Error('O workspace tem um .git próprio. Revise e remova antes de usar o histórico; nada foi salvo.');
     if(this.initialized(id))return;
-    const init=spawnSync(this.git,['init','--bare','--quiet','--initial-branch=main',gitDir],{encoding:'utf8',timeout:30000,windowsHide:true,shell:false});
+    // Sem modelo: não copia hooks de exemplo (os hooks ficam desligados) e evita caminhos longos no Windows.
+    const init=spawnSync(this.git,['-c','core.longpaths=true','init','--bare','--quiet','--template=','--initial-branch=main',gitDir],{encoding:'utf8',timeout:30000,windowsHide:true,shell:false});
     if(init.error||init.status!==0)throw new Error(init.error?.code==='ENOENT'?'Git não encontrado. Instale o Git para Windows para usar o histórico.':`Git: ${(init.stderr||'').trim().slice(0,600)}`);
     this.projects.write(join(gitDir,'info','exclude'),EXCLUDE);
   }

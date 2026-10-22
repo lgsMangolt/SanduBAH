@@ -1,12 +1,13 @@
 # Roadmap
 
-O que ainda não está pronto. Os itens saem do backlog em [desktop/CLAUDE.md](desktop/CLAUDE.md), que é onde fica o estado detalhado.
+O que ainda não está pronto. Os itens saem do backlog em [app/docs/customization/SANDUBAH-HANDOFF.md](app/docs/customization/SANDUBAH-HANDOFF.md), que é onde fica o estado detalhado.
 
 ## Ambiente e distribuição
 
-- [ ] Rodar o app desktop a partir de um clone, com um único comando: fork do Ruflo ou script de setup com commit fixado.
-- [ ] Validar a suíte completa do Ruflo e um clone limpo do overlay `desktop/`.
-- [ ] Nova Release do instalador. Os fontes em `desktop/` são posteriores à 0.1.0, e publicar fontes não atualiza o instalador.
+- [x] Código completo e independente no repositório: a base importada em `app/` com os créditos em `NOTICE.md`.
+- [ ] Rodar o app desktop a partir de um clone com um único comando: falta um script de setup que instale as dependências e prepare o runtime.
+- [ ] Validar a suíte completa da base e um clone limpo de `app/`.
+- [ ] Nova Release do instalador. Os fontes em `app/` são posteriores à 0.1.0, e publicar fontes não atualiza o instalador.
 - [ ] Assinatura de código do Windows (Authenticode).
 
 ## Funcionalidades
@@ -16,7 +17,7 @@ O que ainda não está pronto. Os itens saem do backlog em [desktop/CLAUDE.md](d
 - [x] **Checkpoints por aplicação de arquivo,** com diff e restauração confirmada (nos fontes).
 - [ ] **Checkpoints por missão:** agrupar os arquivos de uma missão e restaurar vários de uma vez.
 - [x] **Gauchinhos:** conversa e correção, tarefas, dataset, campo de treino e ferramentas supervisionadas (nos fontes).
-- [ ] **Gauchinhos:** treino LoRA local quando houver GPU compatível e ferramentas MCP do Ruflo com as mesmas regras de supervisão.
+- [ ] **Gauchinhos:** treino LoRA local quando houver GPU compatível e ferramentas MCP do motor local com as mesmas regras de supervisão.
 - [ ] **Skills sob demanda:** metadados e carregamento progressivo, com escopos Central, projeto e papel.
 - [ ] **Gates de qualidade:** verificações determinísticas com evidências de testes e artefatos, sem depender só da autoavaliação do modelo.
 - [ ] **Templates de equipe:** contratos de entrega, dependências e handoff real entre etapas, em execução serial.

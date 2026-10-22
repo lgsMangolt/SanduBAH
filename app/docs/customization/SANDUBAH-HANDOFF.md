@@ -4,7 +4,7 @@
 
 Trabalhar com um worker e mudanças focadas. Não alterar gateways, aplicativos externos, impressão, configurações globais de autenticação ou correções de outros agentes. Não publicar projetos, Cérebro pessoal, anexos, conversas ou chaves. Não restaurar ou sobrescrever alterações concorrentes. Ações protegidas continuam exigindo confirmação.
 
-O conteúdo desta pasta é um overlay de desenvolvimento sobre Ruflo. Não confundir os fontes desktop, a demonstração web da raiz e o instalador público: são entregas diferentes. Antes de afirmar que uma funcionalidade chegou ao instalador, gerar, testar e publicar uma versão própria.
+O código completo fica em `app/` no repositório SanduBAH: a base Ruflo importada (commit 6cdad1a, MIT) e o SanduBAH por cima. Para desenvolver localmente, a cópia de trabalho continua sendo a do motor local com os fontes do SanduBAH, e `app/` é atualizado a partir dela. Não confundir os fontes desktop, a demonstração web da raiz e o instalador público: são entregas diferentes. Antes de afirmar que uma funcionalidade chegou ao instalador, gerar, testar e publicar uma versão própria.
 
 ## Entregue nos fontes
 
