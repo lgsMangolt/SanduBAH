@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="SanduBAH: prévia interativa de um ambiente para planejar, organizar conhecimento e acompanhar agentes. Somente dados fictícios, sem conexão com modelos.">
+  <meta name="description" content="Baixe o SanduBAH para Windows e aprenda a conectar Codex ou Claude. Explore também a demonstração pública, somente com dados fictícios.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; frame-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <title>SanduBAH · Prévia interativa</title>
@@ -22,6 +22,11 @@
     <header class="topbar"><span>Meu ambiente / <strong id="breadcrumb">Novo projeto</strong></span><div><button id="notice-toggle" type="button">♧ Avisos</button><span class="pill">● Prévia pública</span></div></header>
     <main>
       <div class="demo-banner"><span>PRÉVIA INTERATIVA</span> Explore à vontade: os agentes, mensagens e resultados desta página são uma demonstração, não execução de IA.</div>
+      <section class="desktop-download" aria-labelledby="desktop-download-title">
+        <div><p class="eyebrow">DESKTOP DISPONÍVEL · WINDOWS X64</p><h2 id="desktop-download-title">Leve o SanduBAH para o seu PC.</h2><p>Prévia 0.1.0 · ≈ 508 MiB · Electron, Node e MCP local incluídos. Use sua própria conta Codex ou Claude; modelos e assinaturas não estão incluídos.</p></div>
+        <div class="download-actions"><a class="download-button primary" id="download-installer" href="https://github.com/lgsMangolt/SanduBAH/releases/download/v0.1.0/SanduBAH-Setup-0.1.0-x64.exe" target="_blank" rel="noopener noreferrer">↓ Baixar SanduBAH para Windows</a><a class="download-button" href="#install">Como instalar e conectar minha IA</a><a class="release-link" href="https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0" target="_blank" rel="noopener noreferrer">Novidades, SHA-256 e relatório de testes ↗</a></div>
+        <p class="download-note">Prévia experimental, ainda sem certificado de editor do Windows. Confira a origem e a verificação na Release; não desative as proteções do sistema. Nenhum projeto ou chave pessoal do desenvolvedor acompanha o instalador.</p>
+      </section>
       <header class="page-heading"><div><p class="eyebrow">DO PRIMEIRO BAH AO PRIMEIRO BUILD</p><h1 id="title">Sua ideia encontra uma equipe.</h1><p id="subtitle">Planeje, organize e acompanhe. Sem perder o fio do projeto.</p></div><img src="assets/sandubah.png" alt="" class="hero-logo"></header>
       <section id="content" aria-live="polite"></section>
       <footer>Feito para quem cria com IA. <span>SanduBAH · prévia demonstrativa · sem telemetria de aplicação</span></footer>
