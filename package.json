@@ -1,6 +1,6 @@
 {
   "name": "sandubah",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Ambiente desktop para planejar projetos com agentes de IA (Codex e Claude) sem perder o contexto.",
   "type": "module",

@@ -257,7 +257,7 @@ class DesktopController extends EventEmitter {
     this.memory = new MemoryMonitor({root:this.repositoryRoot,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),python:this.planner.python});
     this.models = new ModelManager({root:this.repositoryRoot,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),planner:this.planner,isBusy:()=>Boolean(this.active),execute:(label,operation)=>this.single(label,operation),terminate:terminateOwnedChild});
     this.models.on('change',snapshot=>this.emit('models',snapshot));
-    this.projects = new ProjectWorkspace({repositoryRoot:this.repositoryRoot,catalog,personalLibrary,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),readLocal:source=>localPath(this.repositoryRoot,source),isRunning:id=>this.active?.projectId===id});
+    this.projects = new ProjectWorkspace({repositoryRoot:this.repositoryRoot,nodeExecutable:runtime.nodeExecutable,catalog,personalLibrary,guard:destination=>assertLocalWritePath(this.repositoryRoot,destination),readLocal:source=>localPath(this.repositoryRoot,source),isRunning:id=>this.active?.projectId===id});
     this.versionHistory = new ProjectHistory({projects:this.projects,secretPattern});
     this.queueStopped = false;
     this.mcp = mcpClient || new LocalMcpClient({ nodeExecutable:runtime.nodeExecutable, launcher:join(this.repositoryRoot,'scripts/sandubah-mcp.cjs'), cwd:this.stateDirectory, env:localEnvironment(this.repositoryRoot,runtime.nodeExecutable,process.env,this.stateDirectory) });

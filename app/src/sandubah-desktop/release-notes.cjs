@@ -17,6 +17,14 @@ const RELEASES=[{
     {title:'Estudos organizados e contexto seletivo',description:'Tipos de fonte, escopo Central ou projeto e configuração de executor, modelo e força ajudam a reaproveitar conhecimento sem carregar tudo no contexto.'},
     {title:'Avisos com a identidade SanduBAH',description:'Contador de não lidos, de 1 a 9 e 9+, no botão de avisos e no ícone do Windows. É possível ler um aviso, ler todos ou testar sem chamar a IA.'}
   ]
+},{
+  id:'0.2.0',date:'2026-10-23',title:'SanduBAH 0.2.0: aprender, analisar e construir',
+  changes:[
+    {title:'Tutoriais no seu ritmo',description:'21 guias por nível, exercícios locais e roteiro para criar seu primeiro projeto conversando com a IA.'},
+    {title:'Tech e X-Tudo Harness²',description:'Prepare análises autorizadas, revise o harness e compare resultados com critérios explícitos. REA é opcional e precisa estar instalado.'},
+    {title:'Runtime do executor corrigido',description:'As missões recebem o caminho real do Node incluído no aplicativo. A detecção do Codex inclui o instalador nativo atual do Windows.'},
+    {title:'Seus dados continuam locais',description:'Projetos ficam separados dos arquivos do programa. Envio, execução e atualizações mantêm suas confirmações.'}
+  ]
 }];
 const validId=value=>typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value);
 class ReleaseNotes{

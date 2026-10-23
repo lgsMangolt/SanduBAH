@@ -25,7 +25,17 @@ async function run(){
   const runtime=JSON.parse(fs.readFileSync(join(root,'build/sandubah/gui/runtime.json'),'utf8'));assert.equal(runtime.distribution.installed,true);assert.equal(runtime.codexExecutable,'');assert.equal(fs.realpathSync(runtime.nodeExecutable),fs.realpathSync(join(resources,'node/node.exe')));assert.equal(initial.catalog.entries.every(entry=>['mcp','cli'].includes(entry.kind)),true);checks.push('no-external-node-or-original-checkout','no-bundled-user-account');
   const publicConfig=JSON.parse(fs.readFileSync(join(resources,'update-public.json'),'utf8'));assert.equal(digest(Buffer.from(publicConfig.publicKey)),'91ab36c79db049506162973c12bbd41468e65d49a335d8dd7e9e4f65870c05fb');const downloads=process.env.SANDUBAH_VM_DOWNLOAD_DIRECTORY;const manifestBytes=fs.readFileSync(join(downloads,'SanduBAH-update.json')),manifest=JSON.parse(manifestBytes);assert.equal(verify(null,manifestBytes,publicConfig.publicKey,fs.readFileSync(join(downloads,'SanduBAH-update.sig'))),true);assert.equal(manifest.installer.sha256,process.env.SANDUBAH_EXPECTED_SHA256);checks.push('pinned-Ed25519-update-signature');
   await page.waitForFunction(async()=>!['idle','checking'].includes((await window.sandubah.updatesStatus()).phase),null,{timeout:120000});const update=await page.evaluate(()=>window.sandubah.updatesStatus());assert.ok(update.checkedAt);assert.equal(fs.existsSync(join(root,'build/sandubah/gui/updates')),false);checks.push('automatic-public-check-without-download-or-install');
-  const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();await page.locator('.main-nav [data-view="tutorials"]').click();await page.locator('#desktop-updates').waitFor();assert.match(await page.locator('#desktop-updates').textContent(),/só baixa e instala depois de você confirmar/i);assert.equal(await page.locator('.tutorial-card').count(),9);checks.push('update-confirmations-explained-in-panel');
+  const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();await page.locator('.main-nav [data-view="tutorials"]').click();await page.locator('#desktop-updates').waitFor();assert.match(await page.locator('#desktop-updates').textContent(),/só baixa e instala depois de você confirmar/i);assert.equal(await page.locator('.tutorial-card').count(),21);checks.push('update-confirmations-explained-in-panel');
+  const tutorials=page.locator('#tutorials-view');
+  await tutorials.getByRole('tab',{name:'Avançado',exact:true}).click();
+  await tutorials.getByRole('searchbox',{name:'Buscar tutoriais'}).fill('harness2');
+  assert.equal(await tutorials.locator('.tutorial-card:visible').count(),2);
+  await tutorials.getByRole('searchbox',{name:'Buscar tutoriais'}).fill('');
+  await tutorials.getByRole('tab',{name:'Iniciante',exact:true}).click();
+  assert.equal(await tutorials.getByRole('region',{name:'Primeiro projeto juntos'}).isVisible(),true);
+  await page.locator('.main-nav [data-view="tech"]').click();
+  await page.locator('#tech-view').getByRole('tab',{name:'X-Tudo Harness²',exact:true}).waitFor();
+  checks.push('tutorial-levels-and-search','first-project-wizard-present','Tech-and-X-Tudo-navigation');
   const projects=await page.evaluate(()=>window.sandubah.project({action:'list'}));
   if(mode==='fresh'){
     assert.deepEqual(projects,[]);checks.push('fresh-install-has-zero-personal-projects');

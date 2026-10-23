@@ -6,7 +6,7 @@ const {createHash,randomUUID}=require('node:crypto');
 const {DesktopUpdates,FEED}=require('../src/sandubah-desktop/desktop-updates.cjs');
 const root=resolve(__dirname,'..'),directory=join(root,'build/sandubah/distribution');
 const build=JSON.parse(fs.readFileSync(join(directory,'latest-build.json'),'utf8'));
-const checkpoint=JSON.parse(fs.readFileSync(join(directory,'release-github.json'),'utf8'));
+const checkpoint=JSON.parse(fs.readFileSync(join(directory,'release-github-0.2.0.json'),'utf8'));
 const publicConfig=JSON.parse(fs.readFileSync(join(build.output,'win-unpacked/resources/update-public.json'),'utf8'));
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function publicBytes(url,limit){
@@ -17,7 +17,7 @@ async function publicBytes(url,limit){
 async function run(){
   assert.equal(checkpoint.published,true);assert.equal(checkpoint.installerSha256,build.sha256);assert.equal(digest(Buffer.from(publicConfig.publicKey)),build.publicKeyFingerprint);
   const release=JSON.parse((await publicBytes(FEED,256*1024)).toString('utf8'));assert.equal(release.id,checkpoint.releaseId);assert.equal(release.tag_name,'v'+build.version);assert.equal(release.draft,false);assert.equal(release.prerelease,false);
-  const expected=['SanduBAH-Setup-0.1.0-x64.exe','SanduBAH-update.json','SanduBAH-update.sig','SHA256SUMS.txt',checkpoint.vmEvidence];assert.deepEqual(release.assets.map(asset=>asset.name).sort(),expected.sort());
+  const expected=['SanduBAH-Setup-0.2.0-x64.exe','SanduBAH-update.json','SanduBAH-update.sig','SHA256SUMS.txt',checkpoint.vmEvidence];assert.deepEqual(release.assets.map(asset=>asset.name).sort(),expected.sort());
   for(const asset of checkpoint.assets.filter(asset=>asset.name!=='SanduBAH-test-controller.zip')){const remote=release.assets.find(item=>item.name===asset.name);assert.equal(remote.size,asset.bytes);assert.equal(remote.digest,'sha256:'+asset.sha256);}
   const reportAsset=release.assets.find(asset=>asset.name===checkpoint.vmEvidence);assert.equal(reportAsset.browser_download_url,`https://github.com/lgsMangolt/SanduBAH/releases/download/v${build.version}/${checkpoint.vmEvidence}`);
   const evidenceBytes=await publicBytes(reportAsset.browser_download_url,128*1024);assert.equal(digest(evidenceBytes),checkpoint.vmEvidenceSha256);const evidence=JSON.parse(evidenceBytes);assert.equal(evidence.passed,true);assert.equal(evidence.installerSha256,build.sha256);assert.equal(evidence.privateProjectsIncluded,false);assert.equal(evidence.personalCredentialsIncluded,false);

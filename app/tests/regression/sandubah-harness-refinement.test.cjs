@@ -32,6 +32,15 @@ test('referência pequena, imutável e citável não carrega o acervo ou faz bus
   assert.equal(library.sharedDocuments('').length,0);
 });
 
+test('prompt usa o Node do runtime mesmo quando o projeto está em outra raiz',()=>{
+  const {root,projects,project}=fixture();
+  const executable=join(root,'runtime-independente','node.exe');
+  const isolated=new ProjectWorkspace({repositoryRoot:root,nodeExecutable:executable,catalog:{entries:[]},guard:projects.guard,readLocal:filename=>join(root,filename)});
+  const prompt=isolated.codexPrompt(project,{title:'Teste',instructions:'Validar dados fictícios',files:[]},{name:'Executor',role:'developer'});
+  assert.ok(prompt.includes('Node local: '+executable));
+  assert.ok(!prompt.includes('Node local: '+join(root,'build/sandubah/gui/node/node.exe')));
+});
+
 test('revisão cria só missão pendente no mesmo projeto e preserva Markdown e preferências',()=>{
   const defaults={engine:'codex',model:'gpt-6-luna',effort:'medium'}, {root,projects,library,project}=fixture(defaults);
   const originals=Object.fromEntries(['HARNESS.md','MEMORY.md'].map(file=>[file,readFileSync(join(projects.location(project.id),file),'utf8')]));

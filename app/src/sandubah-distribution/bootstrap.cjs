@@ -6,7 +6,7 @@ const {homedir,tmpdir}=require('node:os');
 const {materializeAsync,safePath,atomic}=require('./workspace-image.cjs');
 protocol.registerSchemesAsPrivileged([{scheme:'sandubah-media',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true,stream:true}},{scheme:'sandubah-preview',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 function findCodex(home){
-  const candidates=[join(home,'.local/bin/codex.exe'),join(home,'AppData/Local/Microsoft/WindowsApps/codex.exe')];
+  const candidates=[join(home,'.local/bin/codex.exe'),join(home,'AppData/Local/Microsoft/WindowsApps/codex.exe'),join(home,'AppData/Local/Programs/OpenAI/Codex/bin/codex.exe')];
   const directory=join(home,'AppData/Local/OpenAI/Codex/bin');if(fs.existsSync(directory))for(const entry of fs.readdirSync(directory,{withFileTypes:true}).filter(entry=>entry.isDirectory()))candidates.push(join(directory,entry.name,'codex.exe'));
   return candidates.reverse().find(path=>fs.existsSync(path)&&fs.lstatSync(path).isFile())||'';
 }

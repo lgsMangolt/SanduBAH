@@ -14,7 +14,7 @@ $downloadDirectory = Join-Path $env:RUNNER_TEMP 'sandubah-release-download'
 $reportPath = Join-Path $env:RUNNER_TEMP ("SanduBAH-windows-vm-validation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.json")
 $stage = 'preflight'
 $checks = [Collections.Generic.List[string]]::new()
-$report = [ordered]@{schema=1;passed=$false;installerSha256=$ExpectedSha256;version='0.1.0';workerLimit=1;modelCalls=0;environment='Fresh GitHub-hosted Windows Server 2025 VM; development tools preinstalled, application PATH isolated';runId=$env:GITHUB_RUN_ID;runAttempt=$env:GITHUB_RUN_ATTEMPT;commit=$env:GITHUB_SHA;workflowUrl="https://github.com/$repository/actions/runs/$env:GITHUB_RUN_ID";checks=@();privateProjectsIncluded=$false;personalCredentialsIncluded=$false;windowsCodeSigned=$false}
+$report = [ordered]@{schema=1;passed=$false;installerSha256=$ExpectedSha256;version='0.2.0';workerLimit=1;modelCalls=0;environment='Fresh GitHub-hosted Windows Server 2025 VM; development tools preinstalled, application PATH isolated';runId=$env:GITHUB_RUN_ID;runAttempt=$env:GITHUB_RUN_ATTEMPT;commit=$env:GITHUB_SHA;workflowUrl="https://github.com/$repository/actions/runs/$env:GITHUB_RUN_ID";checks=@();privateProjectsIncluded=$false;personalCredentialsIncluded=$false;windowsCodeSigned=$false}
 function Invoke-GitHub([string[]]$Arguments) {
     $output = & gh @Arguments
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release transfer failed.' }
@@ -83,15 +83,15 @@ try {
     if ((Test-Path -LiteralPath $appDirectory) -or (Test-Path -LiteralPath $dataDirectory) -or $null -ne (Get-ProductEntry)) { throw 'VM already contains SanduBAH data; refusing to replace it.' }
     $checks.Add('fresh-VM-no-existing-application-or-project-data')
     $release = (Invoke-GitHub -Arguments @('api',"repos/$repository/releases/$ReleaseId")) | ConvertFrom-Json
-    if (-not $release.draft -or $release.tag_name -ne 'v0.1.0') { throw 'Only the expected draft release can be validated.' }
+    if (-not $release.draft -or $release.tag_name -ne 'v0.2.0') { throw 'Only the expected draft release can be validated.' }
     $stage = 'download-and-hash'
     Write-Host 'Downloading and verifying the audited draft assets.'
     New-Item -ItemType Directory -Path $downloadDirectory | Out-Null
-    Invoke-GitHub -Arguments @('release','download','v0.1.0','--repo',$repository,'--pattern','SanduBAH-Setup-0.1.0-x64.exe','--pattern','SanduBAH-update.json','--pattern','SanduBAH-update.sig','--pattern','SanduBAH-test-controller.zip','--dir',$downloadDirectory) | Out-Null
+    Invoke-GitHub -Arguments @('release','download','v0.2.0','--repo',$repository,'--pattern','SanduBAH-Setup-0.2.0-x64.exe','--pattern','SanduBAH-update.json','--pattern','SanduBAH-update.sig','--pattern','SanduBAH-test-controller.zip','--dir',$downloadDirectory) | Out-Null
     $controller = Join-Path $downloadDirectory 'SanduBAH-test-controller.zip'
     if ($env:SANDUBAH_TEST_TOOLS_SHA256 -notmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath $controller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:SANDUBAH_TEST_TOOLS_SHA256) { throw 'Offline test controller failed its audit hash.' }
     Expand-Archive -LiteralPath $controller -DestinationPath $env:SANDUBAH_TEST_TOOLS
-    $script:installer = Join-Path $downloadDirectory 'SanduBAH-Setup-0.1.0-x64.exe'
+    $script:installer = Join-Path $downloadDirectory 'SanduBAH-Setup-0.2.0-x64.exe'
     if ((Get-FileHash -LiteralPath $script:installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedSha256) { throw 'Downloaded installer hash does not match the audited artifact.' }
     $env:SANDUBAH_INSTALLED_DIRECTORY = $appDirectory
     $env:SANDUBAH_VM_DOWNLOAD_DIRECTORY = $downloadDirectory
@@ -123,7 +123,7 @@ try {
     $report.checkedAt = [DateTime]::UtcNow.ToString('o')
     $report.checks = @($checks.ToArray())
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $reportPath -Encoding utf8NoBOM
-    Invoke-GitHub -Arguments @('release','upload','v0.1.0',$reportPath,'--repo',$repository) | Out-Null
+    Invoke-GitHub -Arguments @('release','upload','v0.2.0',$reportPath,'--repo',$repository) | Out-Null
 }
 if (-not $report.passed) { throw 'VM lifecycle validation failed; keep the release as a draft.' }
 Write-Host 'VM lifecycle validation passed. The release remains a draft until separately published.'

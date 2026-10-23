@@ -5,7 +5,7 @@ const {createRequire}=require('node:module');
 const {createHash,generateKeyPairSync,createPrivateKey,createPublicKey,sign,randomUUID}=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const {codePath,validateManifest,safePath}=require('../src/sandubah-distribution/workspace-image.cjs');
-const root=resolve(__dirname,'..'),version='0.1.0',build=join(root,'build/sandubah/distribution');
+const root=resolve(__dirname,'..'),version='0.2.0',build=join(root,'build/sandubah/distribution');
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const write=(filename,bytes)=>{fs.mkdirSync(dirname(filename),{recursive:true});fs.writeFileSync(filename,bytes);};
 const userDirectory=require('node:path').basename(require('node:os').homedir());
@@ -29,13 +29,15 @@ function prepare(){
   const files=[],dependencies=[],omitted=[];
   function put(path,bytes){
     if(!codePath(path))throw new Error(`Caminho fora da lista: ${path}`);
+    if(path==='v3/@claude-flow/cli/dist/src/init/executor.js')bytes=Buffer.from(bytes.toString('utf8').replace(/^ \* Claude Code stores Windows paths like .+$/m,' * Windows project paths are normalized below.').replace(/^ \* Node.s `path.resolve\(\)` may emit .+$/m,' * Normalize separators and letter case for comparison.'));
+    if(path==='v3/@claude-flow/cli/dist/src/mcp-tools/memory-tools.js')bytes=Buffer.from(bytes.toString('utf8').replace(/^\s*\/\/.*OneDrive.*Claude Stuff.*$/m,'        // Normalize project paths with spaces on Windows.'));
     if(/\.(?:png)$/i.test(path))bytes=cleanPng(bytes);else if(!/\.(?:wasm|node|exe|dll|ico|zip|gz|br|bin|dat|woff2?|ttf|webp|jpe?g)$/i.test(path)&&privatePattern.test(bytes.toString('utf8')))throw new Error(`Dado privado detectado em ${path}; pacote bloqueado.`);
     write(join(image,path),bytes);files.push({path,bytes:bytes.length,sha256:digest(bytes)});
   }
   function copy(source,target,{packageFiles=false}={}){
     const info=fs.lstatSync(source);if(info.isSymbolicLink())throw new Error(`Link de origem não permitido: ${target}`);
     if(info.isDirectory()){for(const item of fs.readdirSync(source,{withFileTypes:true})){
-      if(packageFiles&&(item.name.startsWith('.')||/^(?:node_modules|__tests__|tests?|testdata|fixtures|examples?|docs?|coverage|benchmarks?)$/i.test(item.name)||/\.(?:map|tsbuildinfo|d\.ts)$/i.test(item.name)))continue;
+      if(packageFiles&&(item.name.startsWith('.')||/^(?:node_modules|__tests__|tests?|testdata|fixtures|examples?|docs?|coverage|benchmarks?)$/i.test(item.name)||/\.(?:map|tsbuildinfo|d\.ts|(?:test|spec)\.[cm]?js)$/i.test(item.name)))continue;
       copy(join(source,item.name),target+'/'+item.name,{packageFiles});
     }}else if(info.isFile()){put(target,fs.readFileSync(source));}
   }
@@ -80,7 +82,7 @@ function prepare(){
 }
 async function main(){
   const reuse=process.argv.indexOf('--reuse-image');let prepared;
-  if(reuse!==-1){const stage=resolve(process.argv[reuse+1]||'');safePath(build,relative(build,stage));if(dirname(stage)!==build||!/^0\.1\.0-[a-f0-9-]{36}$/.test(stage.split(/[\\/]/).at(-1)))throw new Error('Imagem de construção fora da pasta segura.');const image=join(stage,'app-image'),manifest=validateManifest(JSON.parse(fs.readFileSync(join(image,'image-manifest.json'),'utf8')));for(const entry of manifest.files)if(digest(fs.readFileSync(safePath(image,entry.path)))!==entry.sha256)throw new Error('Imagem de construção alterada.');prepared={stage,image,app:join(stage,'application'),key:publisherKey(),config:JSON.parse(fs.readFileSync(join(stage,'update-public.json'),'utf8'))};if(createPublicKey(prepared.key).export({type:'spki',format:'pem'})!==prepared.config.publicKey)throw new Error('A chave desta imagem não corresponde ao publicador.');}
+  if(reuse!==-1){const stage=resolve(process.argv[reuse+1]||'');safePath(build,relative(build,stage));if(dirname(stage)!==build||!/^0\.2\.0-[a-f0-9-]{36}$/.test(stage.split(/[\\/]/).at(-1)))throw new Error('Imagem de construção fora da pasta segura.');const image=join(stage,'app-image'),manifest=validateManifest(JSON.parse(fs.readFileSync(join(image,'image-manifest.json'),'utf8')));for(const entry of manifest.files)if(digest(fs.readFileSync(safePath(image,entry.path)))!==entry.sha256)throw new Error('Imagem de construção alterada.');prepared={stage,image,app:join(stage,'application'),key:publisherKey(),config:JSON.parse(fs.readFileSync(join(stage,'update-public.json'),'utf8'))};if(createPublicKey(prepared.key).export({type:'spki',format:'pem'})!==prepared.config.publicKey)throw new Error('A chave desta imagem não corresponde ao publicador.');}
   else prepared=prepare();console.log(JSON.stringify({phase:'image-prepared',files:JSON.parse(fs.readFileSync(join(prepared.image,'image-manifest.json'))).files.length}));
   if(process.argv.includes('--prepare-only')){console.log(prepared.stage);return;}
   for(const name of Object.keys(process.env))if(/^(?:CSC_|WIN_CSC_|GH_TOKEN$|GITHUB_TOKEN$|NPM_TOKEN$|AWS_|AZURE_|GOOGLE_APPLICATION_CREDENTIALS$)/i.test(name))delete process.env[name];process.env.CSC_IDENTITY_AUTO_DISCOVERY='false';
@@ -92,7 +94,7 @@ async function main(){
   write(join(prepared.app,'package-lock.json'),JSON.stringify({name:'sandubah-desktop',version,lockfileVersion:3,packages:{'':{name:'sandubah-desktop',version}}}));
   const output=join(prepared.stage,'output');await packageApp({targets:Platform.WINDOWS.createTarget(['nsis'],Arch.x64),publish:'never',projectDir:prepared.app,config:{appId:'br.sandubah.desktop',productName:'SanduBAH',electronVersion:'44.7.0',electronDist:cleanRuntime,directories:{app:prepared.app,output,buildResources:prepared.app},files:['package.json','bootstrap.cjs','workspace-image.cjs','loading-preload.cjs','loading.html'],extraResources:[{from:archive,to:'app-image.asar'},{from:join(root,'build/sandubah/gui/node/node.exe'),to:'node/node.exe'},{from:join(prepared.stage,'update-public.json'),to:'update-public.json'}],asar:true,beforeBuild:()=>false,npmRebuild:true,nodeGypRebuild:false,compression:'store',forceCodeSigning:false,win:{icon:join(root,'build/sandubah/gui/SanduBAH.ico'),target:['nsis'],artifactName:'SanduBAH-Setup-${version}-${arch}.exe',signAndEditExecutable:true},nsis:{oneClick:false,perMachine:false,allowElevation:false,allowToChangeInstallationDirectory:false,deleteAppDataOnUninstall:false,differentialPackage:false,createDesktopShortcut:true,createStartMenuShortcut:true,shortcutName:'SanduBAH',runAfterFinish:false}}});
   const name=`SanduBAH-Setup-${version}-x64.exe`,installer=join(output,name),info=fs.statSync(installer),hash=createHash('sha256');for await(const chunk of fs.createReadStream(installer))hash.update(chunk);
-  const manifest={schema:1,appId:'br.sandubah.desktop',version,platform:'win32',arch:'x64',installer:{name,bytes:info.size,sha256:hash.digest('hex'),url:`https://github.com/lgsMangolt/SanduBAH/releases/download/v${version}/${name}`},notes:['Primeira edição independente para Windows.','Verificação ao abrir; download e instalação somente após confirmação.','Projetos e credenciais ficam separados da pasta do aplicativo.']};const bytes=Buffer.from(JSON.stringify(manifest,null,2));write(join(output,'SanduBAH-update.json'),bytes);write(join(output,'SanduBAH-update.sig'),sign(null,bytes,prepared.key));
+  const manifest={schema:1,appId:'br.sandubah.desktop',version,platform:'win32',arch:'x64',installer:{name,bytes:info.size,sha256:hash.digest('hex'),url:`https://github.com/lgsMangolt/SanduBAH/releases/download/v${version}/${name}`},notes:['Versão 0.2.0: Tech, X-Tudo Harness² e tutoriais por nível.','Verificação ao abrir; download e instalação somente após confirmação.','Projetos e credenciais ficam separados da pasta do aplicativo.']};const bytes=Buffer.from(JSON.stringify(manifest,null,2));write(join(output,'SanduBAH-update.json'),bytes);write(join(output,'SanduBAH-update.sig'),sign(null,bytes,prepared.key));
   const receipt={preparedAt:new Date().toISOString(),version,stage:prepared.stage,output,installer,sha256:manifest.installer.sha256,bytes:info.size,published:false,windowsCodeSigned:false,privateDataIncluded:false,workerLimit:1,publicKeyFingerprint:digest(Buffer.from(prepared.config.publicKey))};write(join(build,'latest-build.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt));
 }
 if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});

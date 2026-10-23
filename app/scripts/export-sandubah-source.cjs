@@ -22,7 +22,7 @@ function prepare(){
   }
   function walk(directory){for(const item of fs.readdirSync(join(root,directory),{withFileTypes:true})){if(item.isSymbolicLink()||item.name.startsWith('.')&&item.name!=='.nojekyll'&&item.name!=='.gitignore')throw new Error('Fonte oculta ou vinculada não revisada.');const filename=directory+'/'+item.name;if(item.isDirectory())walk(filename);else put(filename);}}
   for(const directory of ['src/sandubah-desktop','src/sandubah-distribution','src/sandubah-legal-skill','src/sandubah-public-preview','src/sandubah-journey-ci','src/sandubah-release-ci'])walk(directory);
-  for(const filename of [...scripts,'probe-sandubah-harness2.py','test-sandubah-tech-ui.cjs','test-sandubah-tech-live.cjs'])put('scripts/'+filename);
+  for(const filename of [...scripts,'probe-sandubah-harness2.py','test-sandubah-tech-ui.cjs','test-sandubah-tech-live.cjs','test-sandubah-installer.cjs'])put('scripts/'+filename);
   put('scripts/plan-commerce-mvp.cjs');
   for(const filename of docs)put('docs/customization/'+filename,'desktop/docs/'+filename);
   put('docs/customization/SANDUBAH-SOURCE.md','desktop/README.md');put('docs/customization/SANDUBAH-HANDOFF.md','desktop/CLAUDE.md');put('LICENSE','desktop/LICENSE');
