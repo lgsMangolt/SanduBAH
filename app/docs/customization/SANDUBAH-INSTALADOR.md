@@ -89,3 +89,13 @@ Foram confirmados dois bloqueios, sem contorná-los:
 - `codex login status` confirmou ausência de conta e `codex login` iniciou o OAuth oficial. A navegação real para `auth.openai.com` retornou **HTTP 403**, antes do formulário de login. Não foi determinada a causa do bloqueio, nem transferidas credenciais pessoais para tentar superá-lo.
 
 O job registra falha, com `infrastructurePassed=false` e `fullFlowPassed=false`. A evidência local é `build/sandubah/distribution/visitor-evidence-39773246819-1/report.json`; o ZIP correspondente tem SHA-256 `36d97cc7a747109e9daf5c656792a4cb80447348a7dbb242563ca2f140868271`. A Release 0.1.0 e o site não foram alterados por este teste. A conversa autenticada e o assistente interativo de instalação continuam sem validação neste percurso.
+
+## Atualização 0.2.0 · 23/10/2026
+
+A [Release 0.2.0](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.2.0) substitui 0.1.0 como versão pública atual. Inclui os fontes novos do SanduBAH, Tech/X-Tudo Harness², 21 tutoriais, Node explícito nas instruções do executor e descoberta do caminho nativo atual do Codex. Executável de 532.980.677 bytes; SHA-256 `ed32ab31754e13238838a94099b9f0d7f0e7d0bd39ca35451274d9dccc79040c`. REA e dependências opcionais não estão incluídos.
+
+Regressão local: **277/277**, serial, com as exclusões documentadas no handoff. Pacote e auditoria de privacidade: passaram, 5.173 arquivos. A [primeira VM](https://github.com/lgsMangolt/SanduBAH/actions/runs/39972898791) falhou no controlador por não aguardar uma consulta IPC assíncrona de atualização. O aplicativo já havia instalado e aberto; corrigiu-se o teste, mantendo o mesmo hash do instalador.
+
+A [nova VM](https://github.com/lgsMangolt/SanduBAH/actions/runs/39973515133) passou o ciclo completo: instalação NSIS por usuário, abertura normal, MCP real, assinatura do manifesto, consulta automática sem download ou instalação, navegação dos tutoriais/Tech/X-Tudo, reinstalação, desinstalação, instalação novamente com retomada do projeto fictício e remoção final. Projetos e canário fictício de credencial foram preservados. Um worker; nenhum login pessoal ou chamada de modelo. O relatório ligado ao commit `d45a4a0d832cb171352b19d763ca00fdb115609e` e ao SHA-256 está na Release.
+
+Após publicar, a verificação anônima do canal confirmou a assinatura fixada e os estados `current` para 0.2.0 e `available` para uma versão fictícia anterior. Não foi exercitada uma atualização efetiva de 0.1.0 para 0.2.0. Também não foram repetidos os percursos OAuth dos provedores: a descoberta nativa corrigida não transforma o teste anterior bloqueado por HTTP 403 em sucesso. Authenticode, assistente interativo de instalação e outras versões do Windows continuam pendentes.
