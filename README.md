@@ -50,7 +50,7 @@ npm start    # abre a demonstração em http://localhost:3000 (baixa o pacote se
 
 Sem Node, também funciona abrindo `index.html` direto no navegador.
 
-Para o aplicativo completo, use o [instalador da Release](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) ou veja [como trabalhar no código desktop](desktop/README.md).
+Para o aplicativo completo, use o [instalador da Release](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) ou veja [como trabalhar no código desktop](app/docs/customization/SANDUBAH-SOURCE.md).
 
 ## Arquitetura
 
@@ -59,7 +59,7 @@ flowchart LR
     UI["Interface<br/>(renderer)"] -->|IPC via preload| Main["Processo principal<br/>(Electron)"]
     Main --> Backend["Backend<br/>planejador, workspaces, Cérebro"]
     Backend -->|confirmação do usuário| CLIs["CLIs oficiais<br/>Codex · Claude"]
-    Backend <-->|stdio| MCP["Servidor MCP local<br/>(Ruflo)"]
+    Backend <-->|stdio| MCP["Motor MCP local"]
     CLIs --> WS
     Backend --> Brain[("Cérebro<br/>Markdown conectado")]
     Backend --> WS[("Workspaces<br/>privados")]
@@ -97,7 +97,7 @@ O backend conversa com o servidor MCP local. As CLIs rodam com MCP, plugins e ho
 
 ### Novidades nos fontes, depois da v0.1.0
 
-Estas funcionalidades estão no código em [`desktop/`](desktop/README.md), com testes de regressão, mas **ainda não chegaram ao instalador**. A próxima Release precisa de um build e de uma validação próprios.
+Estas funcionalidades estão no código em [`app/`](app/docs/customization/SANDUBAH-SOURCE.md), com testes de regressão, mas **ainda não chegaram ao instalador**. A próxima Release precisa de um build e de uma validação próprios.
 
 - **Trilha do projeto:** prompt enxuto → Grill-me → prompt refinado (`PROMPT.md`, gerado localmente e lido pelos agentes) → rascunho → protótipos. Cada passo mostra o estado real, calculado a partir dos arquivos.
 - **Histórico de versões:** cada versão vira um commit no padrão `feat:`/`fix:`/`docs:`, num git local que fica fora da pasta do agente, com diff e volta a qualquer versão.
@@ -118,12 +118,15 @@ Veja o que vem pela frente no [ROADMAP](ROADMAP.md).
 ```text
 index.html, app.mjs, style.css   demonstração web (GitHub Pages)
 tests/                           testes da demonstração (npm test)
-desktop/                         código do app desktop (overlay sobre o Ruflo)
-  src/sandubah-desktop/          interface e processo principal
+app/                             código completo do app desktop
+  .claude/, .agents/, v3/        motor local (base Ruflo, MIT)
+  src/sandubah-desktop/          interface e processo principal do SanduBAH
   scripts/                       build, instalador e MCP
-  tests/                         testes de regressão
+  tests/regression/sandubah-*    testes de regressão do SanduBAH
+  docs/customization/            documentos do SanduBAH
 ci/, .github/workflows/          testes da demonstração e validação em VM Windows limpa
 ROADMAP.md                       pendências
+NOTICE.md                        créditos e origem do código
 ```
 
 ## Privacidade e segurança
@@ -137,7 +140,7 @@ Mais detalhes em [SECURITY.md](SECURITY.md).
 
 ## Créditos
 
-O app desktop é construído sobre o [Ruflo](https://github.com/ruvnet/ruflo) (MIT). Desenvolvido com auxílio de Claude e Codex; arquitetura, decisões e validação são minhas.
+O motor local do app desktop vem do [Ruflo, de ruvnet](https://github.com/ruvnet/ruflo) (MIT), importado em `app/` com a licença original preservada. Veja o que veio de cada lugar em [NOTICE.md](NOTICE.md). Desenvolvido com auxílio de Claude e Codex; arquitetura, decisões e validação são minhas.
 
 ## Autor
 
