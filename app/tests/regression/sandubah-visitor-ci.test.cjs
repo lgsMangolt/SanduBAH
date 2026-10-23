@@ -13,6 +13,10 @@ for(const filename of ['visitor.cjs','installed.cjs'])test(`visitor VM guard blo
 test('the visitor application test waits for IPC status outside synchronous browser polling',()=>{
   const source=readFileSync(join(root,'src/sandubah-journey-ci/installed.cjs'),'utf8');assert.doesNotMatch(source,/waitForFunction\(async/);assert.match(source,/update=await page\.evaluate/);assert.match(source,/assert\.equal\(update\.phase,'current'/);
 });
+
+test('the release VM waits for the actual asynchronous update status before asserting',()=>{
+  const source=readFileSync(join(root,'src/sandubah-release-ci/installed-desktop.cjs'),'utf8');assert.doesNotMatch(source,/waitForFunction\(async/);assert.match(source,/update=await page\.evaluate/);assert.match(source,/Date\.now\(\)<updateDeadline/);assert.match(source,/assert\.ok\(update\.checkedAt\)/);
+});
 test('the VM process environment is rebuilt without runner or personal authentication tokens',()=>{
   const source=readFileSync(join(root,'src/sandubah-journey-ci/journey.ps1'),'utf8');assert.ok(source.indexOf("GITHUB_ACTIONS -ne 'true'")<source.indexOf('New-Item'));assert.match(source,/Environment\.Clear\(\)/);assert.doesNotMatch(source,/Environment\['(?:GH_TOKEN|GITHUB_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY|ACTIONS_RUNTIME_TOKEN)'\]/);
 });
