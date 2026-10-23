@@ -16,6 +16,7 @@ const { contextLimit } = require('./context-limits.cjs');
 const { ProjectHistory } = require('./project-history.cjs');
 const { gauchoInstruction, gauchoTaskInstruction } = require('./gaucho.cjs');
 const { secretPattern } = require('./knowledge.cjs');
+const {reviewTarget,prepareSession}=require('./rea-executor.cjs');
 
 const MAX_ARGUMENT_BYTES = 65536;
 const MAX_MESSAGE_BYTES = 4 * 1024 * 1024;
@@ -506,12 +507,12 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
         if(mission.engine==='codex'){
           if(typeof mission.instructions!=='string'||!mission.instructions.trim()||mission.instructions.length>16000)throw new Error('Instruções Codex inválidas.');
           this.projects.validateFiles(mission.files || []);
-          const settings=codexSettings();if(mission.model){const model=this.cloud.models('codex').find(model=>model.id===mission.model);if(!model||mission.effort&&!model.effortLevels.includes(mission.effort))throw new Error('Modelo executor ou força não disponível.');settings.model=mission.model;settings.effort=mission.effort||model.effortLevels.find(level=>level==='medium')||model.effortLevels[0];}return {mission,agent,settings};
+          const settings=codexSettings();if(mission.model){const model=this.cloud.models('codex').find(model=>model.id===mission.model);if(!model||mission.effort&&!model.effortLevels.includes(mission.effort))throw new Error('Modelo executor ou força não disponível.');settings.model=mission.model;settings.effort=mission.effort||model.effortLevels.find(level=>level==='medium')||model.effortLevels[0];}return {mission,agent,settings,reaReview:reviewTarget(this.projects,id,mission)};
         }
         if(mission.engine&&mission.engine!=='mcp')throw new Error('Executor inválido.');
         return {mission,agent,request:this.prepare(`mcp:${mission.tool}`,mission.arguments,directory)};
       });
-      if(!await this.confirm({entry:{name:`${project.name}: ${plan.length} missão(ões)`,kind:'harness'},project:directory,arguments:{workerLimit:1,registerAgents:plan.filter(item=>!item.agent.registered).map(item=>({agentId:item.agent.id,agentType:item.agent.role})),missions:plan.map(item=>item.analysis?{title:item.mission.title,...item.analysis,notice:'Produz estudo/Markdown sem ferramentas ou comandos. Nuvem usa sua conta/cota; local mantém validação e teto de memória. Não instala skills.'}:item.settings?{title:item.mission.title,executor:'Codex instalado · usa sua conta e pode consumir créditos',model:item.settings.model||'padrão do Codex',workspace:this.projects.workspace(id),instructions:item.mission.instructions,files:item.mission.files,context:project.context,profile:'Configuração ignorada apenas neste processo. Login existente. Sem MCPs, plugins, gateway ou alterações no config.toml.'}:{title:item.mission.title,tool:item.request.entry.name,arguments:item.request.arguments})}}))return {cancelled:true};
+      if(!await this.confirm({entry:{name:`${project.name}: ${plan.length} missão(ões)`,kind:'harness'},project:directory,arguments:{workerLimit:1,registerAgents:plan.filter(item=>!item.agent.registered).map(item=>({agentId:item.agent.id,agentType:item.agent.role})),missions:plan.map(item=>item.analysis?{title:item.mission.title,...item.analysis,notice:'Produz estudo/Markdown sem ferramentas ou comandos. Nuvem usa sua conta/cota; local mantém validação e teto de memória. Não instala skills.'}:item.settings?{title:item.mission.title,executor:'Codex instalado · usa sua conta e pode consumir créditos',model:item.settings.model||'padrão do Codex',workspace:this.projects.workspace(id),instructions:item.mission.instructions,files:item.mission.files,context:project.context,rea:item.reaReview?{tool:item.reaReview.tool,version:item.reaReview.version,target:item.reaReview.target,sha256:item.reaReview.sha256,files:item.reaReview.files,callLimit:1,scope:item.reaReview.scope}:null,profile:item.reaReview?'Somente o MCP REA restrito a este snapshot aprovado. Sem outros MCPs, plugins, gateway ou alteração no config.toml.':'Configuração ignorada apenas neste processo. Login existente. Sem MCPs, plugins, gateway ou alterações no config.toml.'}:{title:item.mission.title,tool:item.request.entry.name,arguments:item.request.arguments})}}))return {cancelled:true};
       this.queueStopped=false;
       const client=this.createProjectClient(directory);
       this.active.client=client;
@@ -541,6 +542,7 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
               this.emit('worker',{projectId:id,missionId:mission.id,event:{type:'item.completed',item:{id:'study-response',type:'agent_message',text:response.answer}}});
             }else if(item.settings){
               const prepared=this.projects.prepareCodex(project,mission,agent);
+              if(item.reaReview){prepared.rea=prepareSession(this.projects,id,mission,prepared,item.reaReview,this.runtime);prepared.prompt+='\nREA conectado somente nesta missão: chame mcp sandubah_rea / analyze_javascript_application com input_path='+JSON.stringify(prepared.rea.target)+'. Essa ferramenta analisa um snapshot imutável do alvo aprovado e retorna Evidence real. Não tente acessar outros alvos, usar a CLI pelo shell ou instalar ferramentas. Registre Evidence IDs, cobertura e limites; a análise é estática, não execução do artefato.\n';this.projects.write(join(prepared.runDirectory,'context.md'),prepared.prompt);}
               if(this.media){prepared.images=this.media.prepareProject(project,prepared.workspace,(path,content)=>this.projects.write(path,content));if(prepared.images.length){prepared.prompt+='\nLeia MEDIA.md e examine as imagens fornecidas como referências visuais. Os vídeos foram amostrados; áudio não analisado.\n';this.projects.write(join(prepared.runDirectory,'context.md'),prepared.prompt);}}
               assertLocalWriteTree(this.repositoryRoot,prepared.workspace);
               mission.runId=prepared.runId;this.projects.save(project);

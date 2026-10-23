@@ -14,6 +14,9 @@ const { PlanningReview, planningReview, executionReview, gauchoReview, gauchoTas
 const { GauchoLibrary } = require('./gaucho.cjs');
 const { readiness, MODELS } = require('./gaucho-dataset.cjs');
 const fieldEngine = require('./gaucho-field.cjs');
+const {techSnapshot,prepareTech}=require('./tech-lab.cjs');
+const {receipts,confirmedComparison}=require('./x-tudo.cjs');
+const {reviewStatus}=require('./harness-refinement.cjs');
 const { existsSync, readFileSync, readdirSync, lstatSync, mkdirSync } = require('node:fs');
 const { spawn } = require('node:child_process');
 const { join, resolve } = require('node:path');
@@ -186,10 +189,17 @@ function createWindow() {
     if(action==='recommend')return controller.knowledge.recommendations(payload.id);
     if(action==='lifecycle')return controller.knowledge.lifecycle(payload.id);
     if(action==='track')return controller.knowledge.track(payload.id);
+    if(action==='tech-state'){const state=techSnapshot(controller.projects,payload.id);return {...state,receipts:payload.id?receipts(controller.projects,payload.id):[],artifacts:payload.id?controller.projects.artifacts(payload.id):[],refinement:payload.id?reviewStatus(controller.projects.get(payload.id)):null};}
     if(action==='open'){const project=controller.knowledge.project(payload.id);controller.knowledge.safe(project.directory,project.directory);if(!lstatSync(project.directory).isDirectory())throw new Error('A pasta do projeto não está disponível.');const error=await shell.openPath(project.directory);if(error)throw new Error(error);return {opened:true};}
     if(controller.active)throw new Error('Aguarde o worker antes de alterar o cérebro.');
     if(action==='refine-prompt')return controller.knowledge.refinePrompt({id:payload.id,version:payload.version});
     if(action==='prepare-draft')return controller.knowledge.prepareDraft(payload.id);
+    if(action==='prepare-harness-review')return controller.knowledge.prepareHarnessReview(payload.id,controller.cloud.selection);
+    if(action==='tutorial-resource'){const {learningResources}=await import('./learning-path.mjs');const resource=learningResources.find(item=>item.id===payload.resourceId);if(!resource)throw new Error('Material fora da lista de fontes oficiais.');const approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'Material de estudo',message:'Abrir este material oficial no navegador?',detail:`${resource.title}\n${resource.url}\n\nNenhum projeto, resposta de exercício, conversa ou credencial será enviado. O site tem políticas e requisitos próprios.`,buttons:['Agora não','Abrir material'],defaultId:0,cancelId:0,noLink:true});if(approval.response!==1)return {cancelled:true};await shell.openExternal(resource.url);return {opened:true};}
+    if(action==='tech-prepare')return prepareTech(controller.projects,payload.id,payload.input,controller.cloud.selection);
+    if(action==='xtudo-compare')return confirmedComparison({projects:controller.projects,id:payload.id,input:payload.input,isBusy:()=>Boolean(controller.active),confirm:async preview=>{
+      const approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'X-Tudo · revisar comparação',message:'Salvar esta comparação no projeto?',detail:`Vamos conferir os valores de três arquivos, sem executar código ou chamar IA. Nada será aplicado. A origem dos resultados e as condições do ensaio precisam de revisão humana.\n\n${preview.label}\nBase: ${preview.baselinePassed}/${preview.total} · candidato: ${preview.candidatePassed}/${preview.total}\nGanhos: ${preview.gains} · regressões: ${preview.regressions}\n\nArquivos revisados (os hashes completos ficam no recibo):\n${Object.entries(preview.sources).map(([key,source])=>`${key}: ${source.path}`).join('\n')}\n\nCritérios:\n${preview.checks.map(check=>`${check.id}${check.critical?' · crítico':''}: base ${check.baseline?'passou':'falhou'}, candidato ${check.candidate?'passou':'falhou'}`).join('\n')}`,buttons:['Agora não','Salvar comparação'],defaultId:0,cancelId:0,noLink:true});return approval.response===1;
+    }});
     if(action==='lifecycle-update')return controller.knowledge.updateLifecycle(payload.id,payload.input);
     if(action==='fine-tuning-save')return controller.knowledge.saveFineTuning(payload.projectId,payload.input);
     if(action==='fine-tuning-study'){const result=controller.knowledge.prepareFineTuning(payload.projectId);controller.media.copyScope('fine-tuning:'+(payload.projectId||'general'),'project:'+result.harnessId);return result;}

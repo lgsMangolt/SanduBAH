@@ -6,6 +6,7 @@ const {createHash}=require('node:crypto');
 const {ProductLifecycle}=require('./product-lifecycle.cjs');
 const {STUDY_TYPES,studyOptions,inferStudyType}=require('./study-types.cjs');
 const {buildTrack,refinedPrompt}=require('./project-track.cjs');
+const {REFERENCE,REVIEW_TITLE,referenceDocument,reviewStatus,prepareReview}=require('./harness-refinement.cjs');
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const excluded=name=>name.startsWith('.')||/^(node_modules|build|dist|vendor|coverage|target|release.*|ruflo-custom)$/i.test(name);
 const sensitiveName=name=>/(credential|password|secret|token|auth|\.env)/i.test(name);
@@ -76,9 +77,10 @@ class KnowledgeLibrary{
     this.documents=records;this.sources=[...roots.values()];this.scanReport={scannedAt:new Date().toISOString(),documents:records.size,visited,bytes,warnings:[...new Set(warnings)]};
     return this.snapshot();
   }
-  entries(){return [...this.documents.values()].map(record=>({path:record.id,title:record.title,category:'Obsidian / Nexo',origin:'knowledge',sourceId:record.sourceId,sourceLabel:record.filename})).concat(this.state.learning.filter(record=>record.decision==='accepted'&&record.content).map(record=>({path:'learning:'+record.id,title:record.title,category:'Aprendizados locais',origin:'knowledge'})));}
+  entries(){return [...this.documents.values()].map(record=>({path:record.id,title:record.title,category:'Obsidian / Nexo',origin:'knowledge',sourceId:record.sourceId,sourceLabel:record.filename})).concat(this.state.learning.filter(record=>record.decision==='accepted'&&record.content).map(record=>({path:'learning:'+record.id,title:record.title,category:'Aprendizados locais',origin:'knowledge'})),[{path:REFERENCE.id,title:REFERENCE.name,category:'Referências de harness',origin:'knowledge',sourceLabel:REFERENCE.url}]);}
   ensureIndex(){if(!this.scanReport)this.refresh();}
   document(id){
+    if(id===REFERENCE.id)return referenceDocument();
     if(id==='knowledge:legal-reference'&&this.legal){const source=this.legal.status();return {path:id,title:source.name,sourceLabel:source.url,content:`# ${source.name}\n\n${source.url}\n\n${source.mode}\n\n${source.scope}\n\n${source.policy}`,links:[],editable:false,origin:'knowledge'};}
     if(id.startsWith('learning:')){const record=this.state.learning.find(item=>'learning:'+item.id===id&&item.decision==='accepted'&&item.content);if(!record)throw new Error('Aprendizado não aprovado pela triagem.');return {path:id,title:record.title,content:`# ${record.title}\n\n${record.provenance}\n\n${record.content}`,links:[],editable:false,version:digest(record.content)};}
     this.ensureIndex();
@@ -95,6 +97,7 @@ class KnowledgeLibrary{
     return {path:id,title:record.title,sourceLabel:record.filename,content,links,editable:false,origin:'knowledge',version:digest(content)};
   }
   searchDocument(id){
+    if(id===REFERENCE.id)return referenceDocument();
     if(id==='knowledge:legal-reference')return this.document(id);
     if(id.startsWith('learning:'))return this.document(id);
     this.ensureIndex();
@@ -209,8 +212,9 @@ class KnowledgeLibrary{
   }
   track(harnessId){
     const inputs=this.trackInputs(harnessId),track=buildTrack(inputs);
-    return {...track,harnessId,answers:inputs.answers,grillMe:inputs.grillMe,prompt:inputs.promptExists?this.projects.document('PROMPT.md',harnessId):null};
+    return {...track,harnessId,answers:inputs.answers,grillMe:inputs.grillMe,prompt:inputs.promptExists?this.projects.document('PROMPT.md',harnessId):null,refinement:reviewStatus(inputs.project)};
   }
+  prepareHarnessReview(id,selection){const result=prepareReview(this.projects,id,selection);return {...this.track(id),...result};}
   refinePrompt({id,version}){
     const inputs=this.trackInputs(id),directory=this.projects.location(id);let backup=null;
     if(inputs.promptExists){
@@ -248,6 +252,7 @@ class KnowledgeLibrary{
     if(!this.state.autoAssess)return;
     let content=typeof result==='string'?result:JSON.stringify(result);if(!content)return;
     const assessment=assessKnowledge(content,success);
+    if(Array.isArray(result?.project?.missions)&&result.project.missions.some(mission=>mission.tech||mission.title===REVIEW_TITLE)&&assessment.decision!=='rejected'){assessment.decision='review';assessment.reason='Tech/X-Tudo contém propostas: revisar evidências e escopo antes de promover ao Cérebro.';}
     const key=digest(label+'\n'+content);if(this.state.learning.some(item=>item.id===key))return;
     const tooLarge=content.length>16000;
     this.state.learning.unshift({id:key,title:label.slice(0,200),createdAt:new Date().toISOString(),...assessment,decision:tooLarge&&assessment.decision!=='rejected'?'review':assessment.decision,reason:tooLarge&&assessment.decision!=='rejected'?'Resultado grande: consulte a evidência original; cópia integral não armazenada.':assessment.reason,content:assessment.decision==='rejected'||tooLarge?null:content,provenance});

@@ -3,7 +3,7 @@
 // Trilha do projeto: prompt enxuto → Grill-me → prompt refinado → rascunho → protótipos.
 // O estado de cada passo vem de dados reais (objetivo, respostas, arquivos, missões); nada é marcado como feito por suposição.
 const TOPICS=[['goal','Objetivo em detalhe'],['audience','Para quem e qual problema'],['data','O que já existe'],['constraints','Limites'],['success','Critérios de aceite'],['next','Primeiro passo']];
-const PLANNING_MISSION=/^(Grill-me|Planejamento direto|Rascunho)\b/;
+const PLANNING_MISSION=/^(Grill-me|Planejamento direto|Rascunho|Revisão Harness²|X-Tudo|Tech)(?:\b|:)/;
 const has=(artifacts,name)=>artifacts.some(file=>file.path===name||file.path.endsWith('/'+name));
 
 function buildTrack({project,answers={},grillMe=true,artifacts=[],promptExists=false}){

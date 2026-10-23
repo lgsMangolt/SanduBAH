@@ -10,6 +10,7 @@ import {createTutorials} from './tutorials.mjs';
 import {createWhatsNew} from './whats-new.mjs';
 import {createUpdates} from './updates.mjs';
 import {createGauchos} from './gaucho.mjs';
+import {createTech} from './tech.mjs';
 import {layoutStore,panelControls,heightHandle} from './panels.mjs';
 
 const api=window.sandubah;
@@ -19,7 +20,7 @@ const pageSize=24;
 const state={catalog:null,view:'all',kind:'all',category:'all',search:'',page:0,selected:null,jsonMode:false,arguments:{},status:{connected:false,busy:false,history:[]},tests:[],favorites:[]};
 let world;
 let planner;
-let office,connections,dock,tutorialHub,gauchos;
+let office,connections,dock,tutorialHub,gauchos,tech;
 try{state.favorites=JSON.parse(localStorage.getItem('sandubah-favorites')||'[]');}catch{}
 
 function element(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=String(text);return node;}
@@ -42,17 +43,19 @@ function setView(view){
   const library='Skills, agentes e plugins disponíveis na sua cópia, para ler antes de usar.';
   const subtitles={all:'Explore as funções reais do motor local. Inspecione, prepare e execute com controle.',mcp:'Ferramentas do MCP local: consultas rodam direto, ações pedem confirmação e o que sai do escopo fica bloqueado.',cli:'Comandos e subcomandos da CLI da sua cópia, com a sintaxe real.',library,plugin:library,skill:library,agent:library,favorites:'As funções que você marcou com estrela, num só lugar.',development:'Build e testes usando apenas os arquivos e dependências da sua cópia.',activity:'As operações desta sessão, na ordem em que aconteceram.',connections:'O que está instalado e conectado: MCP local, Codex e Claude.',brain:'Seus Markdown conectados. Escolha o que entra no contexto e veja as fontes usadas.',office:'Os papéis de cada projeto e o andamento das missões, um worker por vez.',harness:'O projeto aberto: missões, contexto conectado e arquivos do workspace.',planner:'Converse sobre a ideia, conecte os Markdown do projeto e organize o trabalho dos agentes.',projects:'Os projetos conhecidos pelo seu Cérebro, com progresso, recomendações e acesso ao trabalho.',tutorials:'Guias práticos para planejar, construir e acompanhar seus projetos no SanduBAH.',gauchos:'Agentes que você cria do zero e ensina conversando, corrigindo e dando uma base própria.'};
   byId('page-subtitle').textContent=subtitles[view]||subtitles.all;
+  if(view==='tech'){byId('page-title').textContent='Sua oficina de ideias e melhorias.';byId('breadcrumb-view').textContent='Tech / X-Tudo';byId('page-subtitle').textContent='Referências autorizadas, engenharia reversa com evidências e melhoria supervisionada do harness.';}
   if(view==='office'){byId('page-title').textContent='Seu time, no mesmo lugar.';byId('breadcrumb-view').textContent='Escritório';}
   if(view==='connections')byId('page-title').textContent='Conecte o que faz sentido para você.';
   const settings=['development','activity','connections'].includes(view);
-  const group=settings?'settings':view==='harness'?'projects':['brain','projects','planner','office','tutorials','gauchos'].includes(view)?view:'all';
+  const group=settings?'settings':view==='harness'?'projects':['brain','projects','planner','office','tutorials','gauchos','tech'].includes(view)?view:'all';
   document.querySelectorAll('.nav-button').forEach(button=>button.classList.toggle('active',button.dataset.view===group));
   document.querySelectorAll('.section-tab').forEach(button=>{const active=(button.dataset.view==='overview'?'all':button.dataset.view)===view;button.classList.toggle('active',active);button.setAttribute('aria-current',active?'page':'false');});
   byId('settings-tabs').hidden=!settings;
   if(settings)byId('breadcrumb-view').textContent=`Configurações / ${view==='connections'?'Conexões':shortTitles[view]}`;
-  byId('catalog-view').hidden=['development','activity','brain','projects','harness','planner','office','connections','tutorials','gauchos'].includes(view);
+  byId('catalog-view').hidden=['development','activity','brain','projects','harness','planner','office','connections','tutorials','gauchos','tech'].includes(view);
   office?.show(view);connections?.show(view);
   tutorialHub?.show(view);gauchos?.show(view);
+  tech?.show(view);
   dock?.show(view);
   world?.show(view);
   planner?.show(view);
@@ -194,8 +197,10 @@ async function initialize(){
     planner=createPlanner({api,notify:showToast});
     office=createOffice({api,container:byId('office-view'),onContinue:id=>world.continueProject(id)});
     connections=createConnections({api,container:byId('connections-view'),navigate:setView,getStatus:()=>state.status});
-    tutorialHub=createTutorials({container:byId('tutorials-view'),navigate:setView});
+    tutorialHub=createTutorials({api,container:byId('tutorials-view'),navigate:setView,notify:showToast,onStartProject:async(answers,remember)=>{if(state.status.busy)throw new Error('Aguarde o worker antes de preparar o exercício.');const project=await api.project({action:'create',input:{name:answers.name,goal:answers.prompt}});remember(project.id);await planner.prepareTutorialProject(project.id,'Vamos planejar o primeiro projeto descrito no meu harness, passo a passo. Explique os conceitos e faça uma pergunta por vez. Ainda não execute nem publique nada.');setView('planner');return project.id;},onContinueProject:async id=>{await planner.openProject(id);setView('planner');}});
     gauchos=createGauchos({api,container:byId('gauchos-view'),notify:showToast});
+    tech=createTech({api,container:byId('tech-view'),notify:showToast,isBusy:()=>state.status.busy,onContinue:id=>world.continueProject(id)});
+    window.addEventListener('sandubah:open-tech',event=>{tech.openProject(event.detail.id);setView('tech');});
     const desktopUpdates=createUpdates({api,container:byId('tutorials-view'),notify:showToast,autoCheck:initial.updateCheckOnOpen});
     const whatsNew=createWhatsNew({api,initial:initial.releaseNotes,navigate:setView,notify:showToast});
     window.addEventListener('sandubah:open-project',event=>{if(event.detail.view==='harness')world.continueProject(event.detail.id);else planner.openProject(event.detail.id);});

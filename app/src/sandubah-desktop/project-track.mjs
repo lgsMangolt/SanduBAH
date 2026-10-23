@@ -29,6 +29,12 @@ export function createProjectTrack({api,projectId,run,notify,onProjectChanged,op
       item.append(pick);list.append(item);
     });
     section.append(heading,list,detail(track.steps.find(step=>step.id===selected)));
+    if(track.refinement){
+      const review=node('div','project-track-detail');review.append(node('h4','','X-Tudo Harness² · melhorar meu harness'),node('p','muted','Uma melhoria por vez, inspirada no Harness²: observar → propor → planejar um ensaio → revisar. Critérios críticos e regressões importam mais que uma nota total. Não altera o projeto automaticamente.'));
+      const prepare=button(track.refinement.queued?'Revisão já está na fila':'Preparar revisão X-Tudo Harness²',run(async()=>{const result=await api.knowledge({action:'prepare-harness-review',id:projectId});track=result;notify(result.reused?'A revisão existente foi preservada.':'Revisão preparada. Enviar à IA ainda exige confirmação; nenhum ensaio foi executado.');await onProjectChanged();}));prepare.disabled=isBusy()||track.refinement.queued;
+      const sources=node('details','project-track-preview');sources.append(node('summary','','Método, fonte e limites'),node('p','muted',`Google Research · ${track.refinement.reference.commit.slice(0,7)} · Apache-2.0. Revisão em Markdown, não execução do runner upstream. Testes e aplicação são passos separados e confirmados. Não treina o modelo nem declara melhoria sem evidências.`));
+      review.append(prepare,button('Abrir Tech e comparações',()=>window.dispatchEvent(new CustomEvent('sandubah:open-tech',{detail:{id:projectId}}))),sources);section.append(review);
+    }
   }
   function detail(step){
     const panel=node('div','project-track-detail');panel.append(node('h4','',step.title),node('p','muted',step.detail));

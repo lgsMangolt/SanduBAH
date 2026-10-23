@@ -4,6 +4,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { existsSync, readFileSync, lstatSync, realpathSync } = require('node:fs');
 const { join, dirname, delimiter, resolve, relative, isAbsolute } = require('node:path');
+const {configuration:reaConfiguration}=require('./rea-executor.cjs');
 const hashFile = filename => existsSync(filename) ? createHash('sha256').update(readFileSync(filename)).digest('hex') : null;
 
 function codexSettings(environment=process.env) {
@@ -17,13 +18,14 @@ function codexSettings(environment=process.env) {
   return {home,configPath,configHash:hashFile(configPath),model,effort};
 }
 
-function workerArguments({workspace,outputPath,settings,sandbox='workspace-write'}) {
+function workerArguments({workspace,outputPath,settings,sandbox='workspace-write',rea,runtime}) {
   if(!['workspace-write','read-only'].includes(sandbox))throw new Error('Sandbox inválido.');
   const args=['--no-daemon','-a','never','exec','--json','--color','never','--ephemeral','--ignore-user-config','--skip-git-repo-check','--sandbox',sandbox,'-C',workspace,'--output-last-message',outputPath,'--output-schema',join(dirname(outputPath),'result-schema.json')];
   for(const feature of ['multi_agent','multi_agent_v2','plugins','hooks','apps','browser_use','computer_use','skill_mcp_dependency_install'])args.push('--disable',feature);
   for(const config of ['windows.sandbox="unelevated"','project_root_markers=[]','sandbox_workspace_write.network_access=false','web_search="disabled"','features.skip_host_skill_discovery=true'])args.push('-c',config);
   if(settings.model)args.push('-m',settings.model);
   if(settings.effort)args.push('-c',`model_reasoning_effort=${JSON.stringify(settings.effort)}`);
+  if(rea)for(const config of reaConfiguration({workspace,runDirectory:dirname(outputPath),rea,runtime}))args.push('-c',config);
   args.push('-');return args;
 }
 
@@ -44,12 +46,12 @@ class CodexWorker {
     });
   }
   cancel(){this.cancelled=true;this.killProcess(this.child);}
-  async run({workspace,runDirectory,prompt,images=[],onEvent=()=>{},settings=codexSettings(),sandbox='workspace-write'}) {
+  async run({workspace,runDirectory,prompt,images=[],onEvent=()=>{},settings=codexSettings(),sandbox='workspace-write',rea}) {
     if(this.child)throw new Error('O worker Codex já está em execução.');
     if(!this.codexHome||this.codexHome.toLowerCase()===settings.home.toLowerCase())throw new Error('O executor exige perfil privado, separado do Codex global.');
     if(!existsSync(this.runtime.codexExecutable))throw new Error('Codex local não encontrado. Atualize o runtime local, sem instalar pacotes da rede.');
     this.cancelled=false;
-    const args=workerArguments({workspace,outputPath:join(runDirectory,'last-message.txt'),settings,sandbox});
+    const args=workerArguments({workspace,outputPath:join(runDirectory,'last-message.txt'),settings,sandbox,rea,runtime:this.runtime});
     if(!Array.isArray(images)||images.length>16)throw new Error('Use até 16 imagens por execução.');
     for(const image of images){const filename=resolve(image),inside=relative(realpathSync(workspace),realpathSync(filename)),info=lstatSync(filename);if(inside.startsWith('..')||isAbsolute(inside)||!info.isFile()||info.isSymbolicLink()||info.nlink>1||info.size>10*1024*1024)throw new Error('Imagem fora do workspace privado.');args.splice(args.length-1,0,'--image',filename);}
     return new Promise((resolvePromise,rejectPromise)=>{

@@ -7,7 +7,7 @@ const {assertLocalWriteTree}=require('../src/sandubah-desktop/backend.cjs');
 const {privatePattern,cleanPng}=require('./build-sandubah-installer.cjs');
 const root=resolve(__dirname,'..'),destination=join(root,'build/sandubah/source-export');
 const scripts=['SanduBAH.cs','audit-sandubah-distribution.cjs','brand-sandubah-runtime.cjs','build-sandubah-gui.cjs','build-sandubah-gui.ps1','build-sandubah-installer.cjs','dev-local.ps1','diagnose-sandubah-qwen.py','download-sandubah-model.py','download-sandubah-qwen.py','export-sandubah-catalog.mjs','export-sandubah-source.cjs','install-sandubah-airllm.ps1','install-sandubah-legal-skill.cjs','install-sandubah.ps1','publish-sandubah-preview.cjs','release-sandubah.cjs','run-sandubah-site-journey.cjs','sandubah-config.py','sandubah-mcp.cjs','sandubah-memory.py','sandubah-qwen-worker.py','sandubah.ps1','smoke-sandubah-mcp.cjs','stage-sandubah-test-controller.cjs','test-sandubah-public-preview.cjs','verify-sandubah-public-preview.cjs','verify-sandubah-release.cjs'];
-const docs=['SANDUBAH-CLAUDE-HOWTO.md','SANDUBAH-ESTUDOS.md','SANDUBAH-CONVERSAS-MODELOS.md','SANDUBAH-LEIS.md','SANDUBAH-INSTALADOR.md','SANDUBAH-INTERATIVO.md','SANDUBAH-AIRLLM.md'];
+const docs=['SANDUBAH-CLAUDE-HOWTO.md','SANDUBAH-HARNESS2.md','SANDUBAH-TECH.md','SANDUBAH-TUTORIAIS.md','SANDUBAH-ESTUDOS.md','SANDUBAH-CONVERSAS-MODELOS.md','SANDUBAH-LEIS.md','SANDUBAH-INSTALADOR.md','SANDUBAH-INTERATIVO.md','SANDUBAH-AIRLLM.md'];
 function auditText(content,privateTerms=[]){
   if(privatePattern.test(content)||/[a-z]:[\\/]+Users[\\/]+|(?:^|[\s"'`])\/home\/[A-Za-z0-9_.-]+\//i.test(content))throw new Error('Possível dado privado ou segredo: exportação bloqueada.');
   const normalized=content.toLocaleLowerCase('pt-BR');if(privateTerms.some(term=>typeof term==='string'&&term.length>=5&&normalized.includes(term.toLocaleLowerCase('pt-BR'))))throw new Error('Referência a ambiente ou projeto privado: exportação bloqueada.');
@@ -22,7 +22,7 @@ function prepare(){
   }
   function walk(directory){for(const item of fs.readdirSync(join(root,directory),{withFileTypes:true})){if(item.isSymbolicLink()||item.name.startsWith('.')&&item.name!=='.nojekyll'&&item.name!=='.gitignore')throw new Error('Fonte oculta ou vinculada não revisada.');const filename=directory+'/'+item.name;if(item.isDirectory())walk(filename);else put(filename);}}
   for(const directory of ['src/sandubah-desktop','src/sandubah-distribution','src/sandubah-legal-skill','src/sandubah-public-preview','src/sandubah-journey-ci','src/sandubah-release-ci'])walk(directory);
-  for(const filename of scripts)put('scripts/'+filename);
+  for(const filename of [...scripts,'probe-sandubah-harness2.py','test-sandubah-tech-ui.cjs','test-sandubah-tech-live.cjs'])put('scripts/'+filename);
   put('scripts/plan-commerce-mvp.cjs');
   for(const filename of docs)put('docs/customization/'+filename,'desktop/docs/'+filename);
   put('docs/customization/SANDUBAH-SOURCE.md','desktop/README.md');put('docs/customization/SANDUBAH-HANDOFF.md','desktop/CLAUDE.md');put('LICENSE','desktop/LICENSE');
