@@ -22,10 +22,12 @@
   <link rel="stylesheet" href="sidebar.css">
   <link rel="stylesheet" href="project-track.css">
   <link rel="stylesheet" href="gaucho.css">
+  <link rel="stylesheet" href="client-videos.css">
   <link rel="stylesheet" href="refresh.css">
   <link rel="stylesheet" href="panels.css">
+  <link rel="stylesheet" href="guided-workspace.css">
   <link rel="icon" href="sandubah-logo.png">
-  <script type="module" src="app.mjs"></script>
+  <script type="module" src="bootstrap.mjs"></script>
 </head>
 <body class="ui-refresh">
   <div class="app-shell">
@@ -34,7 +36,11 @@
       <div class="workspace-label">MEU AMBIENTE <span class="local-dot"></span></div>
       <nav class="main-nav" aria-label="Navegação principal">
         <button class="nav-button nav-create" data-view="planner" title="Planejar um novo projeto"><span class="nav-icon" aria-hidden="true"><svg class="nav-plus" viewBox="0 0 24 24" focusable="false"><path d="M12 5v14M5 12h14"/></svg></span>Novo projeto<span class="nav-create-arrow" aria-hidden="true">↗</span></button>
+        <button class="nav-button" data-view="study"><span class="nav-icon" aria-hidden="true">◉</span>Estudar</button>
         <button class="nav-button" data-view="projects"><span class="nav-icon">⚑</span>Meus projetos<span class="nav-count"></span></button>
+        <div class="guided-nav-label">ÁREAS E FERRAMENTAS</div>
+        <button class="nav-button" data-view="clients" aria-label="Clientes" title="Clientes"><span class="nav-icon" aria-hidden="true">♙</span>Clientes</button>
+        <button class="nav-button" data-view="videos" aria-label="Vídeos" title="Vídeos"><span class="nav-icon" aria-hidden="true">▷</span>Vídeos</button>
         <button class="nav-button active" data-view="all"><span class="nav-icon">▦</span>Catálogo<span class="nav-indicator"></span></button>
         <button class="nav-button" data-view="brain"><span class="nav-icon">◉</span>Cérebro</button>
         <button class="nav-button" data-view="office"><span class="nav-icon">▥</span>Escritório</button>
@@ -50,6 +56,7 @@
       <main id="main-content">
         <section class="page-heading"><div><div class="eyebrow">WORKBENCH LOCAL <span class="tiny-separator">/</span> <span id="heading-version">SANDUBAH</span></div><h1 id="page-title">Tudo o que sua cópia pode fazer.</h1><p id="page-subtitle">Explore as funções reais do motor local. Inspecione, prepare e execute com controle.</p></div><div class="copy-badge"><span>◈</span><div>Minha cópia<strong>100% local</strong></div></div></section>
         <div id="load-error" class="alert error" hidden></div>
+        <section id="home-view" aria-label="Por onde começar" hidden></section>
         <section id="planner-view" hidden>
           <div class="qwen-panel">
             <div class="qwen-heading"><img src="sandubah-logo.png" alt="SanduBAH"><div><span class="planner-eyebrow">DA IDEIA AO HARNESS</span><h2>Vamos planejar seu próximo projeto.</h2><p id="model-current">Verificando a IA local…</p></div><span class="planner-local-badge">● No seu PC</span></div>
@@ -68,6 +75,7 @@
                   <button id="planner-use-ready" type="button" class="button primary" hidden>Usar IA aprovada</button>
                 </div>
                 <div class="planner-context"><label class="field-label" for="qwen-project">Contexto do projeto</label><select id="qwen-project"><option value="">Nova ideia — sem harness existente</option></select><p class="qwen-note">Escolha um harness para incluir seus Markdown na conversa.</p></div>
+                <div id="planner-client-link" hidden></div>
                 <div class="planner-context">
                   <label class="field-label" for="brain-context-mode">Cérebro automático</label><select id="brain-context-mode"><option value="economic">Econômico · buscar só o necessário</option><option value="complete">Completo · todos os anexos do escopo</option></select>
                   <p id="brain-context-summary" class="qwen-note" role="status" aria-live="polite">A IA consulta o contexto ao enviar. Sem chamada de modelo para fazer a busca.</p>
@@ -105,6 +113,8 @@
         <section id="office-view" hidden></section>
         <section id="tutorials-view" aria-label="Tutoriais do SanduBAH" hidden></section>
         <section id="gauchos-view" aria-label="Gauchinhos" hidden></section>
+        <section id="clients-view" aria-label="Clientes" hidden></section>
+        <section id="videos-view" aria-label="Vídeos" hidden></section>
         <section id="tech-view" aria-label="Espaço Tech e X-Tudo" hidden></section>
         <nav id="settings-tabs" class="section-tabs" aria-label="Abas de configurações" hidden><button class="section-tab" data-view="connections">Conexões</button><button class="section-tab" data-view="development">Compilar e testar</button><button class="section-tab" data-view="activity">Atividade da sessão</button></nav>
         <section id="connections-view" hidden></section>

@@ -25,7 +25,10 @@ class PlanningReview{
 }
 function executionReview(request,parameters){
   const missions=request.arguments.missions;
-  return {title:'Construir e testar este projeto?',intro:'O agente vai trabalhar no projeto aqui mesmo. Você acompanha arquivos, etapas e a prévia ao lado da conversa.',approvalLabel:'Construir e testar',provider:'Codex',model:missions[0].model,effort:'Do executor',project:request.projectName||request.entry.name,prompt:missions.map(mission=>mission.title).join('\n'),history:[],context:missions.map(mission=>mission.instructions).join('\n\n'),attachments:request.arguments.attachments||[],sources:[],mode:'Markdown do projeto',notice:'Usa sua conta Codex e pode consumir cota. O agente pode criar, alterar e remover arquivos apenas no workspace privado deste projeto, com um worker. Não altera gateway, configurações globais, Corel ou impressão. Nenhuma execução é repetida automaticamente.',parameters};
+  const efforts=[...new Set(missions.map(mission=>mission.effort??null))];
+  const labels={low:'Baixa',medium:'Média',high:'Alta',xhigh:'Extra',max:'Máxima'};
+  const effort=efforts.length===1?(labels[efforts[0]]||efforts[0]||'Não informada · confira o executor'):'Por missão · confira os detalhes';
+  return {title:'Construir e testar este projeto?',intro:'O agente vai trabalhar no projeto aqui mesmo. Você acompanha arquivos, etapas e a prévia ao lado da conversa.',approvalLabel:'Construir e testar',provider:'Codex',model:missions[0].model,effort,project:request.projectName||request.entry.name,prompt:missions.map(mission=>mission.title).join('\n'),history:[],context:missions.map(mission=>mission.instructions).join('\n\n'),attachments:request.arguments.attachments||[],sources:[],mode:'Markdown do projeto',notice:'Usa sua conta Codex e pode consumir cota. O agente pode criar, alterar e remover arquivos apenas no workspace privado deste projeto, com um worker. Não altera gateway, configurações globais, Corel ou impressão. Nenhuma execução é repetida automaticamente.',parameters};
 }
 function gauchoReview(request,parameters){
   const review=planningReview(request,parameters),lessons=request.arguments.lessons||{};

@@ -1,0 +1,19 @@
+.client-video-layout{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:22px;align-items:start}
+.client-video-side,.client-video-detail{padding:22px;border:1px solid var(--line);border-radius:17px;background:var(--paper);min-width:0}
+.client-video-side,.client-video-list,.client-video-form,.client-video-related{display:grid;gap:12px}
+.client-video-form h2{margin:0;font-size:21px}.client-video-form p{margin:0}
+.client-video-field{display:grid;gap:6px;min-width:0}.client-video-field .text-input,.client-video-field select,.client-video-side>.text-input{width:100%;min-width:0;margin:0}
+.client-video-field textarea{resize:vertical}.client-video-form>.button{justify-self:start}
+.client-video-card{display:grid;gap:6px;text-align:left;white-space:normal;overflow-wrap:anywhere;padding:14px!important;width:100%}
+.client-video-card[aria-pressed=true],.client-video-card[aria-pressed=true]:hover{border-color:#314f3a;background:#edf3e8;color:#253c2e}
+.client-video-card small{font-weight:400}.client-video-related{margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.client-video-related h3{margin:0}.client-video-related>.button{justify-self:start;white-space:normal}
+.client-video-skills{margin:4px 0;padding:15px;border:1px solid var(--line);border-radius:12px;min-width:0}
+.client-video-skills legend{font-weight:650;font-size:13px}.client-video-skills>.text-input{width:100%;margin:4px 0 12px}
+.client-video-skill-list{display:grid;gap:10px;max-height:300px;overflow:auto}
+.client-video-skill{display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:8px;align-items:start;font-size:13px;overflow-wrap:anywhere}
+.client-video-skill input{margin:3px 0;width:16px;height:16px}.client-video-skill small{grid-column:2}
+.client-project-link{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:16px;margin:16px 0;border:1px solid var(--line);border-radius:12px;background:#fff}
+.client-project-link .client-video-field{flex:1 1 200px}.client-project-link small{flex-basis:100%}
+@media(max-width:1050px){.client-video-layout{grid-template-columns:1fr}.client-video-list{max-height:260px;overflow:auto}}
+@media(max-width:520px){.client-video-side,.client-video-detail{padding:15px}.client-project-link>.button{flex:1 1 100%}}

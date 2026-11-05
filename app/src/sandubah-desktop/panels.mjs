@@ -14,6 +14,7 @@ export function layoutStore(scope){
 }
 
 function restoreMaximized(){if(!maximized)return;const {element,button}=maximized;element.classList.remove('panel-maximized');document.body.classList.remove('has-maximized-panel');button.textContent='⤢';button.title=button.ariaLabel='Maximizar';button.setAttribute('aria-pressed','false');maximized=null;}
+export function hidePanel(element){if(maximized?.element===element)restoreMaximized();element.hidden=true;}
 let escapeBound=false;
 const bindEscape=()=>{if(escapeBound)return;escapeBound=true;document.addEventListener('keydown',event=>{if(event.key==='Escape'&&maximized)restoreMaximized();});};
 

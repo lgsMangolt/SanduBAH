@@ -1,0 +1,10 @@
+'use strict';
+const {join}=require('node:path');
+const root=process.env.SANDUBAH_STARTUP_TEST_ROOT;
+if(!root)throw new Error('A cópia isolada do teste é obrigatória.');
+const {MemoryMonitor}=require(join(root,'src/sandubah-desktop/memory-monitor.cjs'));
+MemoryMonitor.prototype.status=async()=>({sampledAt:Date.now(),ram:{total:16*1024**3,free:8*1024**3,commitFree:8*1024**3},gpu:null});
+const {dialog}=require('electron');
+globalThis.startupTestApproval=0;globalThis.startupTestConfirmations=[];
+dialog.showMessageBox=async(_window,options)=>{globalThis.startupTestConfirmations.push(options);return {response:globalThis.startupTestApproval};};
+require(join(root,'src/sandubah-desktop/main.cjs'));

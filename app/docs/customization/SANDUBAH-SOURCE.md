@@ -17,7 +17,7 @@ O nome Ruflo foi retirado da interface do SanduBAH, que se refere à base como "
 3. Revise `scripts/build-sandubah-gui.ps1` e prepare o runtime local. Ele não é um instalador universal para ferramentas de desenvolvimento. O build da identidade exige fechar somente a instância local do SanduBAH e guarda backup do seu runtime antes de alterá-lo.
 4. Execute os testes com `node --test --test-concurrency=1`, depois de preparar o catálogo e o runtime.
 
-Ainda não há um comando único que instale as dependências e prepare o runtime a partir de um clone limpo, e esse caminho ainda não foi validado de ponta a ponta. O código pode conter funcionalidades posteriores ao instalador público 0.1.0: publicar o código não atualiza o instalador.
+Ainda não há um comando único que instale as dependências e prepare o runtime a partir de um clone limpo, e esse caminho ainda não foi validado de ponta a ponta. A Release pública registrada no handoff é a 0.2.0, de 23/10/2026. Os fontes locais podem conter mudanças posteriores: personalização dos gauchinhos, Clientes/Vídeos e a revisão de confiabilidade de 24/10/2026 ainda não foram incorporadas a esse instalador. Publicar fontes não atualiza o instalador. Consulte as seções datadas mais recentes do handoff; registros anteriores são históricos.
 
 ## Segurança e atualizações
 

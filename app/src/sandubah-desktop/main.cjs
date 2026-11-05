@@ -12,6 +12,7 @@ const { modelById } = require('./model-catalog.cjs');
 const { reviewLimit } = require('./context-limits.cjs');
 const { PlanningReview, planningReview, executionReview, gauchoReview, gauchoTaskReview, gauchoToolsReview } = require('./planning-review.cjs');
 const { GauchoLibrary } = require('./gaucho.cjs');
+const {ClientVideos,clientVideoAction}=require('./client-videos.cjs');
 const { readiness, MODELS } = require('./gaucho-dataset.cjs');
 const fieldEngine = require('./gaucho-field.cjs');
 const {techSnapshot,prepareTech}=require('./tech-lab.cjs');
@@ -77,6 +78,10 @@ function testFiles() {
 }
 
 async function nativeConfirmation(request) {
+  if(request.entry.kind==='client-video-delete'){
+    const response=await dialog.showMessageBox(mainWindow,{type:'question',title:'Excluir cadastro — SanduBAH',message:`Excluir ${request.arguments.nome}?`,detail:'Somente este cadastro será removido deste PC. Projetos, missões e arquivos não serão apagados. Para clientes, os vínculos precisam ser retirados antes.',buttons:['Manter cadastro','Excluir cadastro'],defaultId:0,cancelId:0,noLink:true});
+    return response.response===1;
+  }
   const parameters=JSON.stringify(redact(request.arguments),null,2);
   if(parameters.length>reviewLimit(request))throw new Error(`A revisão excede ${reviewLimit(request).toLocaleString('pt-BR')} caracteres. Reduza o escopo; nada será cortado.`);
   if(request.entry.kind==='cloud-planning')return planningReviews.ask(planningReview({...request,arguments:redact(request.arguments)},parameters));
@@ -101,6 +106,8 @@ function createWindow() {
   controller.legal=new LegalReference({directory:join(buildRoot,hidden?'test-profile/brain/legal-cache':'brain/legal-cache'),guard:path=>controller.projects.guard(path),write:(path,content)=>controller.projects.write(path,content)});
   controller.knowledge.legal=controller.legal;
   controller.gauchos=new GauchoLibrary({directory:join(buildRoot,hidden?'test-profile/gauchos':'gauchos'),guard:path=>assertLocalWriteTree(repositoryRoot,path),write:(path,content)=>controller.projects.write(path,content),secretPattern});
+  const clientVideos=new ClientVideos({directory:join(buildRoot,hidden?'test-profile/clients-videos':'clients-videos'),projects:controller.projects,catalog:()=>controller.getCatalog(),guard:path=>assertLocalWriteTree(repositoryRoot,path),write:(path,content)=>controller.projects.write(path,content),secretPattern});
+  handle('sandubah:client-videos',payload=>clientVideoAction(clientVideos,payload,{isBusy:()=>Boolean(controller.active),confirm:nativeConfirmation}));
   controller.media=new MediaLibrary({root:repositoryRoot,directory:join(buildRoot,hidden?'test-profile/media':'media'),guard:path=>assertLocalWriteTree(repositoryRoot,path),write:(path,content)=>controller.projects.write(path,content)});
   const previews=new ProjectPreview(controller.projects);
   const previewData=new PreviewData(controller.projects);
@@ -126,7 +133,7 @@ function createWindow() {
   const notices=new CompletionNotifier({Notification,window:mainWindow,hidden,icon:join(__dirname,'sandubah-logo.png'),onBadge:count=>badge.update(count),load:()=>{try{assertLocalWriteTree(repositoryRoot,noticeFile);const info=lstatSync(noticeFile);if(!info.isFile()||info.isSymbolicLink()||info.nlink>1||info.size>128000)return null;return JSON.parse(readFileSync(noticeFile,'utf8'));}catch{return null;}},persist:state=>controller.projects.write(noticeFile,JSON.stringify(state)),send:notice=>{if(!mainWindow.isDestroyed())mainWindow.webContents.send('sandubah:notice',notice);}});
   handle('sandubah:notices',()=>notices.snapshot());
   handle('sandubah:notice-read',payload=>notices.read(payload));
-  handle('sandubah:notice-test',()=>notices.done({title:'Teste SanduBAH',body:'Nome, ícone e contador de avisos do SanduBAH. Este é só um teste; nenhuma IA foi chamada.'}));
+  handle('sandubah:notice-test',()=>notices.done({kind:'test',title:'Teste SanduBAH',body:'Nome, ícone e contador de avisos do SanduBAH. Este é só um teste; nenhuma IA foi chamada e nenhum arquivo foi criado.'}));
   protocol.handle('sandubah-media',async request=>{try{const url=new URL(request.url);if(url.hostname!=='asset')throw new Error('Origem inválida.');const filename=controller.media.path(decodeURIComponent(url.pathname.slice(1)));const response=await net.fetch(pathToFileURL(filename).href,{headers:request.headers});const headers=new Headers(response.headers);headers.set('Access-Control-Allow-Origin','*');return new Response(response.body,{status:response.status,headers});}catch{return new Response('Anexo não disponível',{status:404});}});
   protocol.handle('sandubah-preview',request=>{try{const url=new URL(request.url),result=previews.read(url.hostname,decodeURIComponent(url.pathname.slice(1)));return new Response(result.bytes,{headers:{'Content-Type':result.type,'Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Content-Security-Policy':"default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'"}});}catch{return new Response('A prévia ainda não está disponível.',{status:404});}});
   handle('sandubah:preview',payload=>({...previews.snapshot(payload.id),lifecycle:controller.knowledge.lifecycle('harness:'+payload.id)}));
@@ -136,7 +143,7 @@ function createWindow() {
   handle('sandubah:media-remove',payload=>{if(controller.active)throw new Error('Aguarde o worker para alterar anexos.');return controller.media.remove(payload.scope,payload.id);});
   handle('sandubah:media-frames',payload=>{if(controller.active)throw new Error('Aguarde o worker para preparar o vídeo.');return controller.media.frames(payload.id,payload.frames,payload.duration);});
   handle('sandubah:media-choose',async payload=>{if(controller.active)throw new Error('Aguarde o worker para anexar.');controller.media.scope(payload.scope);const result=await dialog.showOpenDialog(mainWindow,{title:'Fotos e vídeos para este projeto',properties:['openFile','multiSelections'],filters:[{name:'Fotos e vídeos',extensions:['png','jpg','jpeg','webp','mp4','webm','mov']}]});if(result.canceled)return [];if(controller.active)throw new Error('Aguarde o worker para anexar.');return result.filePaths.map(path=>controller.media.importFile(payload.scope,path));});
-  handle('sandubah:build-project',async payload=>{const result=await controller.buildProject(payload);if(!result.cancelled)notices.done({title:result.success?'Projeto atualizado':'Projeto pronto para revisão',body:'Confira os arquivos, testes e a prévia no SanduBAH.',projectId:result.projectId,view:'planner'});return result;});
+  handle('sandubah:build-project',async payload=>{const result=await controller.buildProject(payload);if(!result.cancelled)notices.done({kind:'execution',title:result.success?'Projeto atualizado':'Projeto pronto para revisão',body:'Confira o resultado da missão e os arquivos atuais do projeto.',projectId:result.projectId,missionIds:result.missionIds,view:'harness'});return result;});
   mainWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   mainWindow.webContents.on('did-start-navigation',(_event,_url,isInPlace,isMainFrame)=>{if(isMainFrame&&!isInPlace)planningReviews.cancel();});
   mainWindow.webContents.on('render-process-gone',()=>planningReviews.cancel());
@@ -165,7 +172,7 @@ function createWindow() {
     const approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'SanduBAH · IA local',message:action==='install'?`Preparar ${model.name}?`:`Repetir os testes de ${model.name}?`,detail:action==='install'?`Reaproveita arquivos já baixados ou baixa cerca de ${model.downloadGB} GB da fonte oficial. Depois instala e testa conversa e diagrama.\n\n${model.disk}. Um worker; teto de 3,9 GB na GPU inteira.`:`Testa conversa e diagrama com um worker. Pode levar alguns minutos.\n\nPara conversar com uma IA já aprovada, use “Usar no planejador”. Este teste não é necessário para iniciar uma conversa.\n\nA memória será conferida antes de começar; teto de 3,9 GB na GPU inteira.`,buttons:['Cancelar',action==='install'?'Preparar e testar':'Testar uma vez'],defaultId:0,cancelId:0,noLink:true});
     return approval.response===1?controller.models.enqueue(model.id,action):{cancelled:true};
   });
-  handle('sandubah:planner-chat',async payload=>{const result=await (controller.cloud.selection.provider==='local'?controller.planWithQwen(payload):controller.planWithCloud(payload));if(!result.cancelled)notices.done({title:'Resposta pronta',body:'Sua IA terminou de responder no SanduBAH.',projectId:payload.projectId||'',view:'planner'});return result;});
+  handle('sandubah:planner-chat',async payload=>{const result=await (controller.cloud.selection.provider==='local'?controller.planWithQwen(payload):controller.planWithCloud(payload));if(!result.cancelled)notices.done({kind:'planning',title:'Resposta pronta',body:'Sua IA terminou de responder no SanduBAH.',projectId:payload.projectId||'',view:'planner'});return result;});
   handle('sandubah:planner-stop',()=>{if(controller.active?.worker===controller.cloud)controller.cloud.cancel();else controller.planner.cancel();return {stopping:true};});
   handle('sandubah:planner-image',async()=>{
     if(controller.active)throw new Error('Aguarde o worker antes de anexar uma imagem.');
@@ -185,6 +192,8 @@ function createWindow() {
   handle('sandubah:knowledge',async payload=>{
     const action=payload?.action||'status';
     if(action==='status')return controller.knowledge.snapshot();
+    if(action==='study-notebook')return controller.knowledge.notebook(payload.id);
+    if(action==='study-matches')return controller.knowledge.studyMatches(payload.topic,payload.sourceId,{type:payload.type,scope:payload.scope,projectId:payload.projectId});
     if(action==='refresh'){if(controller.active)throw new Error('Aguarde o worker antes da varredura.');return controller.knowledge.refresh();}
     if(action==='recommend')return controller.knowledge.recommendations(payload.id);
     if(action==='lifecycle')return controller.knowledge.lifecycle(payload.id);
@@ -203,10 +212,12 @@ function createWindow() {
     if(action==='lifecycle-update')return controller.knowledge.updateLifecycle(payload.id,payload.input);
     if(action==='fine-tuning-save')return controller.knowledge.saveFineTuning(payload.projectId,payload.input);
     if(action==='fine-tuning-study'){const result=controller.knowledge.prepareFineTuning(payload.projectId);controller.media.copyScope('fine-tuning:'+(payload.projectId||'general'),'project:'+result.harnessId);return result;}
-    if(action==='fine-tuning-search'){
-      const url=controller.knowledge.perplexitySearch(payload.question);
-      const approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'Pesquisar no Perplexity web',message:'Abrir esta pergunta no Perplexity?',detail:`Somente a pergunta abaixo será enviada ao site externo. Não anexamos Markdown, datasets ou credenciais. Resultados precisam ser revisados e registrados manualmente; não é integração com a API nem treinamento.\n\n${payload.question}`,buttons:['Cancelar','Abrir pesquisa'],defaultId:0,cancelId:0,noLink:true});
-      if(approval.response!==1)return {cancelled:true};await shell.openExternal(url);return {opened:true};
+    if(action==='fine-tuning-search'||action==='study-search'){
+      const record=action==='study-search'?controller.knowledge.notebookRecord(payload.id):null;
+      const question=record?`Estude o tema: ${record.topic}\n\nOrganize conceitos, exemplos, fontes primárias com links e dúvidas a aprofundar. Registre datas, limitações e divergências. O objetivo é criar notas de conhecimento e referências em Markdown, sem propor um aplicativo ou SaaS. Para leis, identifique a jurisdição e confira vigência na fonte oficial.`:payload.question;
+      const url=controller.knowledge.perplexitySearch(question);
+      const approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'Pesquisar no Perplexity web',message:'Abrir esta pergunta no Perplexity?',detail:`Somente a pergunta abaixo será enviada ao site externo. Não anexamos Markdown, datasets ou credenciais. Use sua conta no navegador e traga a resposta e os links para revisar no caderno; o SanduBAH não lê a página automaticamente.\n\n${question}`,buttons:['Cancelar','Abrir pesquisa'],defaultId:0,cancelId:0,noLink:true});
+      if(approval.response!==1)return {cancelled:true};if(controller.active)throw new Error('Um worker iniciou durante a revisão. Aguarde antes de abrir a pesquisa.');await shell.openExternal(url);return {opened:true};
     }
     if(action==='brief')return controller.knowledge.saveBrief(payload.id,payload.answers);
     if(action==='modes')return controller.knowledge.saveModes(payload.id,payload.modes);
@@ -216,7 +227,13 @@ function createWindow() {
     if(action==='continue')return controller.knowledge.continueProject(payload.id);
     if(action==='grill')return controller.knowledge.grill(payload.id);
     if(action==='study-route'){if(controller.active)throw new Error('Aguarde o worker antes de organizar o estudo.');return controller.knowledge.routeStudy(payload.id,payload);}
-    if(action==='study'){if(controller.active)throw new Error('Aguarde o worker antes de preparar outro estudo.');const result=controller.knowledge.study(payload.topic,payload.sourceId,{type:payload.type,scope:payload.scope,projectId:payload.projectId});const project=controller.projects.get(result.harnessId),selected=controller.cloud.selection,candidate=['codex','claude'].includes(selected.provider)&&controller.cloud.models(selected.provider).some(model=>model.id===selected.model)?selected:{provider:'codex',model:controller.cloud.models('codex').find(model=>model.id==='gpt-6-luna')?.id};if(candidate.model){Object.assign(project.missions[0],{engine:candidate.provider,model:candidate.model,effort:candidate.effort,tool:candidate.provider==='codex'?'codex.exec':'claude.study'});project.executorDefaults={engine:candidate.provider,model:candidate.model,effort:candidate.effort};controller.projects.save(project);}controller.media.copyScope('study:general','project:'+result.harnessId);return result;}
+    if(action==='study-save'){
+      const input={version:payload.version,fields:{...payload.fields}},preview=controller.knowledge.previewNotebook(payload.id,input);
+      if(!preview.changed)return controller.knowledge.notebook(payload.id);
+      const record=controller.knowledge.notebookRecord(payload.id),approval=await dialog.showMessageBox(mainWindow,{type:'question',title:'Salvar notas no Cérebro',message:`Salvar o estudo “${record.topic}”?`,detail:`Serão salvos 4 Markdown interligados: mapa, conceitos, fontes e dúvidas. A versão anterior fica preservada.\n\n${preview.fields.reviewed?'Você marcou as notas como revisadas para consulta seletiva no alcance escolhido: '+(record.scope==='central'?'Central, todos os projetos.':'somente o projeto selecionado.'):'Rascunho: ainda não será usado automaticamente pelos projetos.'}\n\nNão chama uma IA nem cria aplicativo ou missão.`,buttons:['Cancelar','Salvar notas'],defaultId:0,cancelId:0,noLink:true});
+      if(approval.response!==1)return {cancelled:true};if(controller.active)throw new Error('Um worker iniciou durante a revisão. Salve quando ele terminar.');return controller.knowledge.saveNotebook(payload.id,input);
+    }
+    if(action==='study'){const result=controller.knowledge.createNotebook(payload.topic,payload.sourceId,{type:payload.type,scope:payload.scope,projectId:payload.projectId,requestId:payload.requestId,duplicateChoice:payload.duplicateChoice,matchFingerprint:payload.matchFingerprint});if(result.studyId&&!result.reused)controller.media.copyScope('study:general','study:'+result.studyId);return result;}
     if(action==='auto'){if(typeof payload.enabled!=='boolean')throw new Error('Preferência inválida.');controller.knowledge.state.autoAssess=payload.enabled;controller.knowledge.persist();return controller.knowledge.snapshot();}
     throw new Error('Ação do cérebro inválida.');
   });
@@ -226,7 +243,7 @@ function createWindow() {
     return controller.projects.edit(payload);
   });
   handle('sandubah:project',payload=>controller.projectAction(payload));
-  handle('sandubah:run-project',async payload=>{const result=await controller.runProject(payload);if(!result.cancelled)notices.done({title:'Etapa do projeto encerrada',body:'Confira resultados e testes no SanduBAH.',projectId:payload.id,view:'harness'});return result;});
+  handle('sandubah:run-project',async payload=>{const result=await controller.runProject(payload);if(!result.cancelled)notices.done({kind:'execution',title:'Etapa do projeto encerrada',body:'Confira o resultado das missões desta execução e os arquivos atuais do projeto.',projectId:payload.id,missionIds:result.missionIds,view:'harness'});return result;});
   handle('sandubah:stop-queue',()=>controller.stopQueue());
   handle('sandubah:interrupt-worker',()=>controller.interruptWorker());
   handle('sandubah:artifacts',payload=>controller.projects.artifacts(payload.id));

@@ -1,3 +1,4 @@
+import {paintAvatar} from './gaucho-avatar.mjs';
 // Aba Campo: montar a pista, treinar por tentativa e erro e ver o gauchinho correr com o que aprendeu.
 const node=(tag,className,text)=>{const value=document.createElement(tag);if(className)value.className=className;if(text!==undefined)value.textContent=text;return value;};
 const button=(text,action,className='button')=>{const value=node('button',className,text);value.type='button';value.addEventListener('click',action);return value;};
@@ -11,7 +12,7 @@ export function outcomeText(evaluation){
 }
 
 // Pixel art desenhada no canvas: céu, chão, obstáculos e o gauchinho de chapéu e poncho.
-function drawScene(context,course,frame){
+function drawScene(context,course,frame,appearance){
   const width=VIEW*TILE,height=(SKY+3)*TILE,start=Math.max(0,Math.min(course.length-VIEW,frame.x-8)),ground=(SKY+1)*TILE;
   context.imageSmoothingEnabled=false;context.fillStyle='#e8f0df';context.fillRect(0,0,width,height);
   context.fillStyle='#f3d27a';context.fillRect(width-3*TILE,TILE,2*TILE,2*TILE);
@@ -24,10 +25,8 @@ function drawScene(context,course,frame){
     if(index===course.length-1){context.fillStyle='#b23a2a';context.fillRect(x+6,ground-2*TILE,2,2*TILE);context.fillRect(x+8,ground-2*TILE,6,5);}
   }
   const px=(frame.x-start)*TILE,lift=frame.climb?(3-frame.climb+1)*TILE:frame.y*TILE,py=ground-lift;
-  context.fillStyle='#2b2b2b';context.fillRect(px+1,py-15,12,2);context.fillRect(px+4,py-19,6,4);
-  context.fillStyle='#e9b98f';context.fillRect(px+5,py-13,4,4);
-  context.fillStyle='#b23a2a';context.fillRect(px+2,py-9,10,5);
-  context.fillStyle='#3f4f6b';context.fillRect(px+4,py-4,2,4);context.fillRect(px+8,py-4,2,4);
+  const moving=appearance?.animated!==false&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  paintAvatar(context,appearance,frame.climb?'celebrate':frame.y?'jump':moving?'walk':'idle',moving?frame.x:0,{left:px-6,top:py-25,scale:.55});
 }
 
 export function createFieldPanel({api,gaucho,run,notify,onChange,isBusy=()=>false,presets}){
@@ -39,7 +38,7 @@ export function createFieldPanel({api,gaucho,run,notify,onChange,isBusy=()=>fals
   const canvas=node('canvas','gaucho-field-canvas');canvas.width=VIEW*TILE;canvas.height=(SKY+3)*TILE;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',`Pista com ${gaucho.name}`);
   const context=canvas.getContext('2d');const caption=node('p','muted gaucho-field-caption','');
   const stop=()=>{clearInterval(timer);timer=null;};
-  const paint=()=>{const current=replay?.frames[frame]||{x:0,y:0,climb:0,action:null};if(context)drawScene(context,course,current);caption.textContent=replay?`Passo ${frame}/${replay.frames.length-1}${current.action?` · ${current.action}`:''}`:'Treine ou clique em ver para assistir.';};
+  const paint=()=>{const current=replay?.frames[frame]||{x:0,y:0,climb:0,action:null};if(context)drawScene(context,course,current,gaucho.appearance);caption.textContent=replay?`Passo ${frame}/${replay.frames.length-1}${current.action?` · ${current.action}`:''}`:'Treine ou clique em ver para assistir.';};
   const play=run(async()=>{stop();if(!replay)replay=(await api.gaucho({action:'field-replay',id:gaucho.id})).replay;frame=0;paint();timer=setInterval(()=>{if(!canvas.isConnected){stop();return;}if(frame>=replay.frames.length-1){stop();caption.textContent=`${outcomeText({...replay,length:course.length-1})}`;return;}frame++;paint();},1000/speed);});
   const speedSelect=node('select');speedSelect.setAttribute('aria-label','Velocidade');for(const [value,label] of [[6,'Devagar'],[14,'Normal'],[30,'Rápido']]){const option=node('option','',label);option.value=String(value);speedSelect.append(option);}speedSelect.value=String(speed);speedSelect.addEventListener('change',()=>{speed=Number(speedSelect.value);if(timer){const resume=frame;stop();frame=resume;timer=setInterval(()=>{if(!canvas.isConnected||frame>=replay.frames.length-1){stop();return;}frame++;paint();},1000/speed);}});
   const viewer=node('section','gaucho-field-viewer');const controls=node('div','gaucho-rate');controls.append(button('▶ Ver ele correr',play,'button primary'),button('Pausar',stop),speedSelect);

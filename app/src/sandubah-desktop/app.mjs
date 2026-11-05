@@ -11,7 +11,11 @@ import {createWhatsNew} from './whats-new.mjs';
 import {createUpdates} from './updates.mjs';
 import {createGauchos} from './gaucho.mjs';
 import {createTech} from './tech.mjs';
-import {layoutStore,panelControls,heightHandle} from './panels.mjs';
+import {createClientVideos,createProjectClientLink} from './client-videos.mjs';
+import {layoutStore,panelControls,heightHandle,hidePanel} from './panels.mjs';
+import {showStartupError} from './startup-error.mjs';
+import {resultActions} from './result-links.mjs';
+import {createStartScreen,createGuidedWorkspace} from './guided-workspace.mjs';
 
 const api=window.sandubah;
 createPlanningReview(api);
@@ -20,17 +24,31 @@ const pageSize=24;
 const state={catalog:null,view:'all',kind:'all',category:'all',search:'',page:0,selected:null,jsonMode:false,arguments:{},status:{connected:false,busy:false,history:[]},tests:[],favorites:[]};
 let world;
 let planner;
-let office,connections,dock,tutorialHub,gauchos,tech;
+let office,connections,dock,tutorialHub,gauchos,tech,clientVideos;
 try{state.favorites=JSON.parse(localStorage.getItem('sandubah-favorites')||'[]');}catch{}
 
 function element(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=String(text);return node;}
 function showToast(message,error=false){const toast=byId('toast');toast.textContent=message;toast.classList.toggle('is-error',error);toast.hidden=false;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>{toast.hidden=true;},4000);}
 function setOutput(title,value){byId('output-panel').hidden=false;byId('output-title').textContent=title;byId('output-content').textContent=formatResult(value);}
+let openingDestination=false;
+async function openDestination(target,mode){
+  if(!resultActions(target).some(action=>action.mode===mode))throw new Error('Este aviso não tem esse destino.');
+  if(openingDestination)throw new Error('Aguarde a abertura do resultado atual.');
+  openingDestination=true;
+  try{
+    if(mode==='conversation'){if(target.projectId)await api.project({action:'get',id:target.projectId});planner.openProject(target.projectId);setView('planner');}
+    else if(mode==='result'){await world.openResult(target.projectId,target.missionIds);}
+    else{await world.continueProject(target.projectId);if(mode==='files'){await dock.openFiles(target.projectId);byId('output-panel').hidden=true;}}
+    hidePanel(byId('task-drawer'));byId('task-bar-toggle').setAttribute('aria-expanded','false');
+    if(mode==='result'){byId('output-content').tabIndex=-1;byId('output-content').focus();}
+  }finally{openingDestination=false;}
+}
 function showError(error){showToast(error.message||String(error),true);}
 function categoryName(category){return categoryLabels[category]||category;}
 function saveFavorites(){localStorage.setItem('sandubah-favorites',JSON.stringify(state.favorites));}
 
 function setView(view){
+  const studying=view==='study';if(studying)view='brain';
   if(view==='settings')view='connections';
   if(view==='overview')view='all';
   state.view=view;state.page=0;state.category='all';
@@ -43,21 +61,28 @@ function setView(view){
   const library='Skills, agentes e plugins disponíveis na sua cópia, para ler antes de usar.';
   const subtitles={all:'Explore as funções reais do motor local. Inspecione, prepare e execute com controle.',mcp:'Ferramentas do MCP local: consultas rodam direto, ações pedem confirmação e o que sai do escopo fica bloqueado.',cli:'Comandos e subcomandos da CLI da sua cópia, com a sintaxe real.',library,plugin:library,skill:library,agent:library,favorites:'As funções que você marcou com estrela, num só lugar.',development:'Build e testes usando apenas os arquivos e dependências da sua cópia.',activity:'As operações desta sessão, na ordem em que aconteceram.',connections:'O que está instalado e conectado: MCP local, Codex e Claude.',brain:'Seus Markdown conectados. Escolha o que entra no contexto e veja as fontes usadas.',office:'Os papéis de cada projeto e o andamento das missões, um worker por vez.',harness:'O projeto aberto: missões, contexto conectado e arquivos do workspace.',planner:'Converse sobre a ideia, conecte os Markdown do projeto e organize o trabalho dos agentes.',projects:'Os projetos conhecidos pelo seu Cérebro, com progresso, recomendações e acesso ao trabalho.',tutorials:'Guias práticos para planejar, construir e acompanhar seus projetos no SanduBAH.',gauchos:'Agentes que você cria do zero e ensina conversando, corrigindo e dando uma base própria.'};
   byId('page-subtitle').textContent=subtitles[view]||subtitles.all;
+  byId('home-view').hidden=view!=='home';
+  if(view==='home'){byId('page-title').textContent='O que vamos fazer hoje?';byId('page-subtitle').textContent='Escolha um caminho. O SanduBAH organiza os próximos passos e você acompanha o resultado.';byId('breadcrumb-view').textContent='Início';}
+  if(studying){byId('page-title').textContent='Estude e guarde o que aprendeu.';byId('breadcrumb-view').textContent='Estudar';}
   if(view==='tech'){byId('page-title').textContent='Sua oficina de ideias e melhorias.';byId('breadcrumb-view').textContent='Tech / X-Tudo';byId('page-subtitle').textContent='Referências autorizadas, engenharia reversa com evidências e melhoria supervisionada do harness.';}
   if(view==='office'){byId('page-title').textContent='Seu time, no mesmo lugar.';byId('breadcrumb-view').textContent='Escritório';}
+  if(view==='clients'){byId('page-title').textContent='Seus clientes, bem organizados.';byId('breadcrumb-view').textContent='Clientes';byId('page-subtitle').textContent='Cadastro local e vínculos com projetos e vídeos. Sem envio automático à IA.';}
+  if(view==='videos'){byId('page-title').textContent='Do briefing à entrega.';byId('breadcrumb-view').textContent='Vídeos';byId('page-subtitle').textContent='Organize seus vídeos, escolha skills e conecte cada produção ao cliente e ao projeto.';}
   if(view==='connections')byId('page-title').textContent='Conecte o que faz sentido para você.';
   const settings=['development','activity','connections'].includes(view);
-  const group=settings?'settings':view==='harness'?'projects':['brain','projects','planner','office','tutorials','gauchos','tech'].includes(view)?view:'all';
+  const group=studying?'study':view==='home'?'home':settings?'settings':view==='harness'?'projects':['brain','projects','planner','office','tutorials','gauchos','tech','clients','videos'].includes(view)?view:'all';
   document.querySelectorAll('.nav-button').forEach(button=>button.classList.toggle('active',button.dataset.view===group));
   document.querySelectorAll('.section-tab').forEach(button=>{const active=(button.dataset.view==='overview'?'all':button.dataset.view)===view;button.classList.toggle('active',active);button.setAttribute('aria-current',active?'page':'false');});
   byId('settings-tabs').hidden=!settings;
   if(settings)byId('breadcrumb-view').textContent=`Configurações / ${view==='connections'?'Conexões':shortTitles[view]}`;
-  byId('catalog-view').hidden=['development','activity','brain','projects','harness','planner','office','connections','tutorials','gauchos','tech'].includes(view);
+  byId('catalog-view').hidden=['home','development','activity','brain','projects','harness','planner','office','connections','tutorials','gauchos','tech','clients','videos'].includes(view);
   office?.show(view);connections?.show(view);
   tutorialHub?.show(view);gauchos?.show(view);
   tech?.show(view);
+  clientVideos?.show(view);
   dock?.show(view);
   world?.show(view);
+  if(studying)world?.openStudy();
   planner?.show(view);
   if(view==='tutorials')byId('page-title').textContent='Um passo de cada vez. Sem complicação.';
   if(view==='gauchos')byId('page-title').textContent='Seus gauchinhos, do seu jeito.';
@@ -191,14 +216,24 @@ async function initialize(){
   try{
     if(!api)throw new Error('Abra este painel pelo SanduBAH.exe. A ponte local não está disponível neste navegador.');
     const initial=await api.initialize();state.catalog=initial.catalog;state.tests=initial.tests;
-    dock=createProjectDock({api,notify:showToast});createNotices({api,navigate:setView});
+    dock=createProjectDock({api,notify:showToast});createNotices({api,openDestination});
+    window.addEventListener('sandubah:open-result',event=>openDestination(event.detail.target,event.detail.mode).catch(showError));
     const drawer=byId('task-drawer');heightHandle({target:drawer,store:()=>layoutStore('global'),key:'drawerHeight',edge:'top',min:200,max:()=>window.innerHeight-200,label:'Ajustar a altura da fila'}).restore();panelControls(drawer,{id:'drawer',title:'Fila de tarefas',store:layoutStore('global'),host:drawer.querySelector('.task-drawer-heading')});
     world=createWorld({api,catalog:state.catalog,notify:showToast,output:setOutput,navigate:setView});
+    window.addEventListener('sandubah:project-selected',event=>{
+      const slot=byId('planner-client-link'),projectId=event.detail.id;slot.replaceChildren();slot.hidden=!projectId||state.view!=='planner';
+      if(!slot.hidden)slot.append(createProjectClientLink({api,projectId,notify:showToast,onClients:()=>setView('clients'),onVideos:()=>clientVideos.openProjectVideos(projectId)}));
+    });
     planner=createPlanner({api,notify:showToast});
+    createGuidedWorkspace({api,planner,dock,notify:showToast});
+    createStartScreen({container:byId('home-view'),onCreate:()=>{planner.openProject('');setView('planner');},onStudy:()=>setView('study'),onContinue:()=>setView('projects')});
     office=createOffice({api,container:byId('office-view'),onContinue:id=>world.continueProject(id)});
     connections=createConnections({api,container:byId('connections-view'),navigate:setView,getStatus:()=>state.status});
     tutorialHub=createTutorials({api,container:byId('tutorials-view'),navigate:setView,notify:showToast,onStartProject:async(answers,remember)=>{if(state.status.busy)throw new Error('Aguarde o worker antes de preparar o exercício.');const project=await api.project({action:'create',input:{name:answers.name,goal:answers.prompt}});remember(project.id);await planner.prepareTutorialProject(project.id,'Vamos planejar o primeiro projeto descrito no meu harness, passo a passo. Explique os conceitos e faça uma pergunta por vez. Ainda não execute nem publique nada.');setView('planner');return project.id;},onContinueProject:async id=>{await planner.openProject(id);setView('planner');}});
     gauchos=createGauchos({api,container:byId('gauchos-view'),notify:showToast});
+    clientVideos=createClientVideos({api,clientsContainer:byId('clients-view'),videosContainer:byId('videos-view'),notify:showToast,navigate:setView,onContinue:id=>world.continueProject(id)});
+    window.addEventListener('sandubah:open-clients',()=>setView('clients'));
+    window.addEventListener('sandubah:project-videos',event=>clientVideos.openProjectVideos(event.detail.id));
     tech=createTech({api,container:byId('tech-view'),notify:showToast,isBusy:()=>state.status.busy,onContinue:id=>world.continueProject(id)});
     window.addEventListener('sandubah:open-tech',event=>{tech.openProject(event.detail.id);setView('tech');});
     const desktopUpdates=createUpdates({api,container:byId('tutorials-view'),notify:showToast,autoCheck:initial.updateCheckOnOpen});
@@ -209,17 +244,17 @@ async function initialize(){
     byId('heading-version').textContent=`SANDUBAH v${initial.version}`;byId('repository-path').textContent=initial.repositoryRoot;
     byId('catalog-date').textContent=`Catálogo de ${new Date(state.catalog.generatedAt).toLocaleDateString('pt-BR')}`;
     byId('footer-source').textContent=`${state.catalog.entries.length.toLocaleString('pt-BR')} entradas reais · cópia local`;
-    renderTestFiles();renderStatus(initial.status);renderCatalog();
+    renderTestFiles();renderStatus(initial.status);renderCatalog();setView('home');
     api.onState(renderStatus);api.onOutput(chunk=>{byId('output-content').textContent=(byId('output-content').textContent+chunk).slice(-1000000);byId('output-content').scrollTop=byId('output-content').scrollHeight;});
     try{renderStatus(await api.connect());}catch(error){showToast(`Catálogo disponível; MCP: ${error.message}`,true);}
     document.body.dataset.ready='true';
     whatsNew.showOnStartup();
     desktopUpdates.start().catch(showError);
-  }catch(error){byId('load-error').hidden=false;byId('load-error').textContent=error.message;document.body.dataset.ready='error';}
+  }catch(error){showStartupError(error);}
 }
 
 document.querySelectorAll('.nav-button,.section-tab').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.view)));
-document.querySelector('.brand').addEventListener('click',event=>{event.preventDefault();setView('all');});
+document.querySelector('.brand').addEventListener('click',event=>{event.preventDefault();setView('home');});
 document.querySelectorAll('.metric').forEach(button=>button.addEventListener('click',()=>setView(button.dataset.kind)));
 byId('kind-filter').addEventListener('change',event=>{state.kind=event.target.value;state.page=0;state.category='all';renderCatalog();});
 byId('search-input').addEventListener('input',event=>{state.search=event.target.value;state.page=0;renderCatalog();});
@@ -240,5 +275,5 @@ byId('test-file-search').addEventListener('input',renderTestFiles);
 async function development(action){try{const testPath=byId('test-file-select').value;if(action==='test'&&!testPath)throw new Error('Selecione um arquivo de testes.');setOutput(action==='test'?'Teste local · um worker':'Compilar CLI local','');const result=await api.development({action,testPath});if(result.cancelled){setOutput('Operação cancelada','Nenhum build/teste foi iniciado.');return;}setOutput(action==='test'?'Resultado do teste':'Resultado da compilação',result.output||`Processo encerrado com código ${result.exitCode}.`);showToast(result.success?'Processo local concluído com sucesso.':`Processo retornou código ${result.exitCode}.`,!result.success);}catch(error){showError(error);}}
 byId('build-cli').addEventListener('click',()=>development('build'));byId('run-test').addEventListener('click',()=>development('test'));
 byId('refresh-catalog').addEventListener('click',async()=>{try{await api.development({action:'catalog'});window.location.reload();}catch(error){showError(error);}});
-document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();if(['development','activity','brain','harness','planner','tutorials'].includes(state.view))setView('all');byId('search-input').focus();}if(event.key==='Escape'&&!byId('detail-panel').hidden)byId('close-detail').click();});
+document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();if(state.view!=='all')setView('all');byId('search-input').focus();}if(event.key==='Escape'&&!byId('detail-panel').hidden)byId('close-detail').click();});
 initialize();

@@ -1,0 +1,68 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {mkdirSync,mkdtempSync,readFileSync,writeFileSync,existsSync}=require('node:fs');
+const {join,resolve,dirname}=require('node:path');
+const {pathToFileURL}=require('node:url');
+const {createHash}=require('node:crypto');
+const {GauchoLibrary}=require('../src/sandubah-desktop/gaucho.cjs');
+const {ProjectWorkspace}=require('../src/sandubah-desktop/workspace.cjs');
+const {assertLocalWritePath}=require('../src/sandubah-desktop/backend.cjs');
+const root=resolve(__dirname,'..'),build=join(root,'build/sandubah/gui');
+const {_electron:electron}=require(join(build,'vendor/node_modules/playwright-core'));
+const executablePath=require(require.resolve('electron',{paths:[root]}));
+assert.equal(existsSync(join(dirname(executablePath),'resources/app.asar')),false);
+const parent=join(build,'tmp');mkdirSync(parent,{recursive:true});const output=mkdtempSync(join(parent,'gaucho-avatar-ui-')),repo=join(output,'repo');mkdirSync(repo);
+const projects=new ProjectWorkspace({repositoryRoot:repo,catalog:{entries:[]},guard:path=>assertLocalWritePath(repo,path),readLocal:path=>join(repo,path)});
+const library=new GauchoLibrary({directory:join(repo,'gauchos'),guard:path=>projects.guard(path),write:(path,content)=>projects.write(path,content)});
+const first=library.create({name:'Tchê Oficina · fictício',selection:{provider:'codex',model:'teste'}}),second=library.create({name:'Tchê Campanha · fictício'});
+const hash=filename=>createHash('sha256').update(readFileSync(filename)).digest('hex');
+const protectedFiles=['backend.cjs','main.cjs','execution-policy.cjs','cloud-planner.cjs'].map(file=>join(root,'src/sandubah-desktop',file));protectedFiles.push(join(root,'build/sandubah/source-publication/README.md'));
+const before=protectedFiles.map(hash),fileUrl=file=>pathToFileURL(join(root,'src/sandubah-desktop',file)).href;
+const pageFile=join(output,'fixture.html');writeFileSync(pageFile,`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Gauchinhos · teste fictício</title><link rel="stylesheet" href="${fileUrl('styles.css')}"><link rel="stylesheet" href="${fileUrl('world.css')}"><link rel="stylesheet" href="${fileUrl('gaucho.css')}"></head><body><main style="padding:24px;max-width:1600px;margin:auto"><section id="gauchos-view"></section><p id="status" role="status"></p></main></body></html>`);
+let application,page;const requests=[],errors=[],network=[];
+async function verify(){
+  const env={...process.env,SANDUBAH_PUBLIC_TEST_PROFILE:join(output,'profile'),SANDUBAH_PUBLIC_TEST_FILE:pageFile};delete env.ELECTRON_RUN_AS_NODE;
+  application=await electron.launch({executablePath,args:[join(root,'tests/regression/fixtures/sandubah-public-main.cjs'),'--disable-gpu','--disable-renderer-backgrounding','--disable-background-timer-throttling'],env,timeout:60000});page=await application.firstWindow();page.setDefaultTimeout(60000);await page.waitForLoadState('domcontentloaded');
+  await application.evaluate(({BrowserWindow})=>{const window=BrowserWindow.getAllWindows()[0];window.webContents.setBackgroundThrottling(false);window.showInactive();});
+  page.on('pageerror',error=>errors.push(error.message));page.on('request',request=>{if(/^https?:/.test(request.url()))network.push(request.url());});
+  await page.exposeFunction('avatarFixture',async payload=>{
+    requests.push(payload.action);
+    if(payload.action==='list')return library.list();
+    if(payload.action==='get')return library.get(payload.id);
+    if(payload.action==='create')return library.create(payload.input);
+    if(payload.action==='update')return library.update(payload.id,payload.input);
+    if(payload.action==='field-presets')return {presets:[],limits:{episodes:5000,timeMs:15000}};
+    if(payload.action==='field-replay')return library.fieldReplay(payload.id);
+    throw new Error('Ação inesperada no teste: '+payload.action);
+  });
+  const initialize=()=>page.evaluate(async({url,id})=>{const {createGauchos}=await import(url);localStorage.setItem('sandubah-gaucho',id);localStorage.setItem('sandubah-gaucho-tab','appearance');window.gauchos=createGauchos({api:{gaucho:window.avatarFixture,plannerStatus:async()=>({cloud:{providers:[]}})},container:document.getElementById('gauchos-view'),notify:message=>document.getElementById('status').textContent=message});window.gauchos.show('gauchos');},{url:fileUrl('gaucho.mjs'),id:first.id});
+  await initialize();const editor=page.locator('.gaucho-avatar-editor');await editor.getByRole('button',{name:'Salvar aparência',exact:true}).waitFor();
+  const canvas=editor.locator('.gaucho-avatar-stage canvas');
+  for(const [label,value]of [['Tom de pele','dark'],['Cabelo','curls'],['Chapéu','none'],['Roupa','vest'],['Cor da roupa','purple'],['Acessório','glasses']])await editor.getByLabel(label,{exact:true}).selectOption(value);
+  assert.equal(library.get(first.id).appearance.skin,'medium');
+  await editor.getByRole('button',{name:'Salvar aparência',exact:true}).click();await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Aparência salva'));
+  assert.equal(library.get(first.id).appearance.skin,'dark');assert.equal(library.get(first.id).appearance.accessory,'glasses');assert.equal(library.get(second.id).appearance.skin,'medium');assert.equal(library.get(first.id).selection.model,'teste');
+  await page.getByRole('button',{name:'Conversa',exact:true}).click();await page.getByRole('button',{name:'Aparência',exact:true}).click();assert.equal(await editor.getByLabel('Tom de pele',{exact:true}).inputValue(),'dark');
+  console.log('Persistência, isolamento e navegação passaram.');
+  await page.emulateMedia({reducedMotion:'reduce'});await editor.getByText('O sistema pediu movimento reduzido',{exact:false}).waitFor();
+  const staticBefore=await canvas.evaluate(element=>element.toDataURL());await page.waitForTimeout(500);assert.equal(await canvas.evaluate(element=>element.toDataURL()),staticBefore);
+  await editor.getByRole('button',{name:'Tomar chimarrão',exact:true}).click();await page.screenshot({path:join(output,'chimarrao.png')});assert.notEqual(await canvas.evaluate(element=>element.toDataURL()),staticBefore);
+  await page.emulateMedia({reducedMotion:'no-preference'});const animatedBefore=await canvas.evaluate(element=>element.toDataURL());await page.waitForFunction(before=>document.querySelector('.gaucho-avatar-stage canvas').toDataURL()!==before,animatedBefore);
+  await editor.getByLabel('Animar este gauchinho',{exact:true}).uncheck();const stopped=await canvas.evaluate(element=>element.toDataURL());await page.waitForTimeout(500);assert.equal(await canvas.evaluate(element=>element.toDataURL()),stopped);
+  await editor.getByRole('button',{name:'Salvar aparência',exact:true}).click();assert.equal(library.get(first.id).appearance.animated,false);
+  console.log('Animação, movimento reduzido e pausa passaram.');
+  await page.getByRole('button',{name:'Campo',exact:true}).click();await page.locator('.gaucho-field-canvas').waitFor();await page.getByRole('button',{name:'▶ Ver ele correr',exact:true}).click();await page.getByRole('button',{name:'Pausar',exact:true}).click();
+  await page.getByRole('button',{name:'Aparência',exact:true}).click();await editor.getByRole('button',{name:'Digitar',exact:true}).click();await page.waitForTimeout(300);assert.equal(await editor.getByRole('button',{name:'Digitar',exact:true}).evaluate(element=>getComputedStyle(element).backgroundColor),'rgb(48, 77, 58)');await page.screenshot({path:join(output,'desktop.png')});
+  const atlas=await page.evaluate(async url=>{
+    const {avatarPresets,avatarPoses,paintAvatar}=await import(url),sheet=document.createElement('canvas');sheet.width=7*208;sheet.height=3*260;const context=sheet.getContext('2d');context.fillStyle='#f5f4e9';context.fillRect(0,0,sheet.width,sheet.height);
+    for(const [row,preset]of avatarPresets.entries())for(const [column,[pose,label]]of avatarPoses.entries()){paintAvatar(context,preset.appearance,pose,1,{left:column*208,top:row*260,scale:4});context.fillStyle='#25392e';context.font='16px sans-serif';context.textAlign='center';context.fillText(preset.name,column*208+104,row*260+225);context.font='14px sans-serif';context.fillText(label,column*208+104,row*260+245);}
+    return sheet.toDataURL('image/png').split(',')[1];
+  },fileUrl('gaucho-avatar.mjs'));writeFileSync(join(output,'movimentos.png'),Buffer.from(atlas,'base64'));
+  await application.evaluate(({BrowserWindow})=>{const window=BrowserWindow.getAllWindows()[0];window.setMinimumSize(300,500);window.setSize(430,900);});await page.waitForFunction(()=>innerWidth<=430);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await editor.scrollIntoViewIfNeeded();await page.screenshot({path:join(output,'mobile.png')});
+  await page.evaluate(()=>window.gauchos.show('other'));await page.evaluate(()=>window.gauchos.show('gauchos'));await editor.waitFor();assert.equal(await editor.getByLabel('Chapéu',{exact:true}).inputValue(),'none');
+  await page.getByPlaceholder('Nome, ex.: Tchê Planilhas',{exact:true}).fill('Tchê Novo · fictício');await page.getByRole('button',{name:'Novo gauchinho',exact:true}).click();await page.getByRole('heading',{name:'Tchê Novo · fictício',exact:true}).waitFor();await editor.waitFor();
+  await editor.getByRole('button',{name:'Da campanha',exact:false}).click();assert.equal(await editor.getByLabel('Chapéu',{exact:true}).inputValue(),'beret');await editor.getByRole('button',{name:'Salvar aparência',exact:true}).click();assert.equal(library.list().find(item=>item.name==='Tchê Novo · fictício').appearance.hat,'beret');
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);assert.deepEqual(protectedFiles.map(hash),before);assert.ok(requests.every(action=>['list','get','create','update','field-presets','field-replay'].includes(action)));
+  const receipt={passed:true,workerLimit:1,modelCalls:0,realExecutor:false,ui:'Electron real, dados fictícios isolados e API de perfil real; nenhuma chamada ao modelo.',checks:['persistência','isolamento-por-agente','modelo-preservado','prévia-sem-salvar','movimento-reduzido','liga-desliga','campo-com-avatar','responsivo-430px','novo-gauchinho-e-preset','zero-rede','confirmações-intactas'],output};writeFileSync(join(output,'receipt.json'),JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt));
+}
+verify().catch(async error=>{console.error(error);console.error(output);process.exitCode=1;if(page)await page.screenshot({path:join(output,'failed.png')}).catch(()=>{});}).finally(async()=>{if(application)await application.close();assert.deepEqual(protectedFiles.map(hash),before);});

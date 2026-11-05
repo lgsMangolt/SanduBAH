@@ -10,6 +10,7 @@ const {BrainSearch}=require('./brain-search.cjs');
 const dataset=require('./gaucho-dataset.cjs');
 const field=require('./gaucho-field.cjs');
 const tools=require('./gaucho-tools.cjs');
+const {appearance}=require('./gaucho-appearance.cjs');
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const LIMITS={gauchos:24,lessons:500,messages:200,documents:60,documentBytes:256000,lessonBudget:12000,knowledgeBudget:8000,tasks:100,taskDocumentBudget:40000};
 const ID=/^[a-f0-9-]{36}$/;
@@ -25,13 +26,13 @@ class GauchoLibrary{
     this.guard(this.directory);if(!existsSync(this.directory))return [];
     return readdirSync(this.directory,{withFileTypes:true}).filter(entry=>entry.isDirectory()&&!entry.isSymbolicLink()&&ID.test(entry.name)).map(entry=>{try{return this.summary(entry.name);}catch{return null;}}).filter(Boolean).sort((first,second)=>second.updatedAt.localeCompare(first.updatedAt));
   }
-  profile(id){const profile=this.read(id,'gaucho.json',null);if(!profile||profile.id!==id)throw new Error('Gauchinho não encontrado.');return profile;}
+  profile(id){const profile=this.read(id,'gaucho.json',null);if(!profile||profile.id!==id)throw new Error('Gauchinho não encontrado.');return {...profile,appearance:appearance(profile.appearance)};}
   summary(id){const profile=this.profile(id);return {...profile,lessons:this.read(id,'lessons.json',[]).length,documents:this.read(id,'knowledge.json',[]).length,weight:this.weight(id)};}
   get(id){return {...this.summary(id),lessonList:this.read(id,'lessons.json',[]),messages:this.read(id,'conversation.json',[]),knowledge:this.read(id,'knowledge.json',[]),taskList:this.tasks(id),dataset:this.dataset(id),field:this.fieldSummary(id),permissions:this.permissions(id),workspace:this.workspaceSummary(id)};}
-  create({name,persona='',selection=null}={}){
+  create({name,persona='',selection=null,appearance:look}={}){
     if(this.list().length>=LIMITS.gauchos)throw new Error(`Limite de ${LIMITS.gauchos} gauchinhos. Cada um ocupa disco e contexto; apague ou reaproveite um antes.`);
     const id=randomUUID(),at=new Date().toISOString();
-    const profile={id,name:this.clean(name,60,'Nome'),persona:this.clean(persona,2000,'Personalidade'),selection:this.selection(selection),createdAt:at,updatedAt:at};
+    const profile={id,name:this.clean(name,60,'Nome'),persona:this.clean(persona,2000,'Personalidade'),selection:this.selection(selection),appearance:appearance(look,{strict:true}),createdAt:at,updatedAt:at};
     if(!profile.name)throw new Error('Dê um nome ao gauchinho.');
     this.save(id,'gaucho.json',profile);this.save(id,'lessons.json',[]);this.save(id,'conversation.json',[]);this.save(id,'knowledge.json',[]);this.save(id,'tasks.json',[]);
     return this.get(id);
@@ -47,6 +48,7 @@ class GauchoLibrary{
     if(input.name!==undefined){profile.name=this.clean(input.name,60,'Nome');if(!profile.name)throw new Error('Dê um nome ao gauchinho.');}
     if(input.persona!==undefined)profile.persona=this.clean(input.persona,2000,'Personalidade');
     if(input.selection!==undefined)profile.selection=this.selection(input.selection);
+    if(input.appearance!==undefined)profile.appearance=appearance(input.appearance,{strict:true});
     profile.updatedAt=new Date().toISOString();this.save(id,'gaucho.json',profile);return this.get(id);
   }
   touch(id){const profile=this.profile(id);profile.updatedAt=new Date().toISOString();this.save(id,'gaucho.json',profile);}

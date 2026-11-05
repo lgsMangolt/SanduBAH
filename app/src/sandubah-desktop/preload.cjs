@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('sandubah',Object.freeze({
   copyRequest:payload=>invoke('sandubah:copy-request',payload),openCodex:()=>invoke('sandubah:open-codex'),
   brain:()=>invoke('sandubah:brain'),document:payload=>invoke('sandubah:document',payload),saveDocument:payload=>invoke('sandubah:save-document',payload),
   knowledge:payload=>invoke('sandubah:knowledge',payload),
+  clientVideos:payload=>invoke('sandubah:client-videos',payload),
   project:payload=>invoke('sandubah:project',payload),runProject:payload=>invoke('sandubah:run-project',payload),stopQueue:()=>invoke('sandubah:stop-queue'),handoff:id=>invoke('sandubah:handoff',{id}),
   onProject:listener=>subscribe('sandubah:project-state',listener),
   interruptWorker:()=>invoke('sandubah:interrupt-worker'),artifacts:id=>invoke('sandubah:artifacts',{id}),artifact:payload=>invoke('sandubah:artifact',payload),applyArtifact:payload=>invoke('sandubah:apply-artifact',payload),checkpoints:id=>invoke('sandubah:checkpoints',{id}),checkpoint:payload=>invoke('sandubah:checkpoint',payload),restoreCheckpoint:payload=>invoke('sandubah:restore-checkpoint',payload),history:payload=>invoke('sandubah:history',payload),gaucho:payload=>invoke('sandubah:gaucho',payload),

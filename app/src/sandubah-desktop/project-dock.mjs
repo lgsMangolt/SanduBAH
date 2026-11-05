@@ -24,7 +24,8 @@ export function createProjectDock({api,notify}){
   const splitter=columnSplitter({container:body,target:dock,store:()=>layout});
   const frameHeight=heightHandle({target:frame,store:()=>layout,key:'previewHeight',min:240,label:'Ajustar a altura da prévia'});
   panelControls(dock,{id:'dock',title:'Prévia do projeto',store:layoutStore('global'),host:heading});
-  async function file(){if(!files.value)return;try{code.textContent=(await api.previewFile({id:projectId,path:files.value})).content;}catch(error){code.textContent=error.message;}}
+  let fileRequest=0;
+  async function file(){const revision=++fileRequest,id=projectId,path=files.value;code.textContent=path?'Carregando arquivo…':'Nenhum arquivo disponível neste workspace.';if(!path)return;try{const result=await api.previewFile({id,path});if(revision===fileRequest&&id===projectId&&path===files.value)code.textContent=result.content;}catch(error){if(revision===fileRequest&&id===projectId&&path===files.value)code.textContent=error.message;}}
   files.onchange=file;
   async function load(force=false){
     if(!projectId)return;splitter.restore();frameHeight.restore();const revision=++request,selectedProject=projectId;
@@ -38,12 +39,12 @@ export function createProjectDock({api,notify}){
       progress.replaceChildren();
       if(loaded.lifecycle)progress.append(createLifecycleEditor({document:loaded.lifecycle,projectId:'harness:'+selectedProject,api,notify,onSaved:()=>load()}));
       const missionsTitle=document.createElement('h3');missionsTitle.textContent='Missões · execução separada do produto';progress.append(missionsTitle);
-      for(const mission of loaded.missions){const row=document.createElement('p');row.textContent=`${{pending:'◷ Na fila',running:'● Trabalhando',done:'✓ Concluída',error:'Revisar falha',unknown:'Resultado não confirmado'}[mission.status]||mission.status} · ${mission.title}`;progress.append(row);}render();
+      for(const mission of loaded.missions){const row=document.createElement('p');row.textContent=`${{pending:'◷ Na fila',running:'● Trabalhando',done:'✓ Concluída',error:'Revisar falha',unknown:'Resultado não confirmado'}[mission.status]||mission.status} · ${mission.title}`;progress.append(row);}render();return loaded;
     }catch(error){if(revision===request)status.textContent=error.message;}
   }
-  function select(id){const next=id||'',changed=next!==projectId;projectId=next;toggle.disabled=!projectId;dock.hidden=!projectId;if(changed){request++;signature='';frame.removeAttribute('src');code.textContent='';if(projectId)load();}return projectId;}
+  function select(id){const next=id||'',changed=next!==projectId;projectId=next;toggle.disabled=!projectId;dock.hidden=!projectId;if(changed){request++;fileRequest++;signature='';frame.removeAttribute('src');files.replaceChildren();code.textContent='';if(projectId)load();}return projectId;}
   window.addEventListener('sandubah:project-selected',event=>select(event.detail.id));
   api.onProject(project=>{if(project.id===projectId){clearTimeout(timer);timer=setTimeout(load,200);}});
   api.onWorker(event=>{if(event.projectId===projectId&&event.event?.type==='item.completed'){clearTimeout(timer);timer=setTimeout(load,300);}});
-  return {select,show(view){if(!['planner','harness'].includes(view))dock.hidden=true;else if(projectId)dock.hidden=false;}};
+  return {select,async openStage(id,stageId){select(id);const loaded=await load();if(!loaded||projectId!==id)throw new Error('Não foi possível carregar as etapas deste projeto.');view='progress';dock.hidden=false;if(dock.classList.contains('panel-collapsed'))dock.querySelector('.panel-button[aria-expanded]')?.click();render();const selectedStage=stageId||loaded.lifecycle?.summary.currentStage||'planning';for(const detail of progress.querySelectorAll('.product-stage'))detail.open=detail.dataset.productStage===selectedStage;tabs.querySelector('[data-dock-tab="progress"]').focus();},async openFiles(id){select(id);const loaded=await load();if(!loaded||projectId!==id)throw new Error('Não foi possível carregar os arquivos deste projeto.');view='files';dock.hidden=false;if(dock.classList.contains('panel-collapsed'))dock.querySelector('.panel-button[aria-expanded]')?.click();render();status.textContent=loaded.files.length?'Arquivos atuais deste projeto · selecione um para ler na lateral.':'Nenhum arquivo criado neste workspace. Uma resposta de texto não gera arquivos automaticamente.';tabs.querySelector('[data-dock-tab="files"]').focus();},show(view){if(!['planner','harness'].includes(view))dock.hidden=true;else if(projectId)dock.hidden=false;}};
 }

@@ -1,6 +1,8 @@
 function element(tag,className,text){const node=document.createElement(tag);if(className)node.className=className;if(text!==undefined)node.textContent=text;return node;}
 
 import {createMemoryBars} from './memory.mjs';
+import {resultActions} from './result-links.mjs';
+import {hidePanel} from './panels.mjs';
 
 export function createModelCenter({api,notify,onSelect,onUpdate,onMemory=()=>{}}){
   createMemoryBars(api,onMemory);
@@ -41,6 +43,7 @@ export function createModelCenter({api,notify,onSelect,onUpdate,onMemory=()=>{}}
   function taskRow(task,cancellable=false){
     const row=element('article','queue-task');const content=element('div');
     content.append(element('strong','',task.label),element('span','queue-state',labels[task.state]||task.state),element('p','',task.message||''));row.append(content);
+    for(const action of resultActions(task)){const button=element('button','button subtle',action.label);button.type='button';button.onclick=()=>window.dispatchEvent(new CustomEvent('sandubah:open-result',{detail:{target:task,mode:action.mode}}));content.append(button);}
     if(cancellable){const button=element('button','button subtle',task.state==='queued'?'Remover':'Interromper');button.type='button';button.addEventListener('click',()=>attempt(()=>api.modelsCancel(task.id)));row.append(button);}
     return row;
   }
@@ -60,7 +63,7 @@ export function createModelCenter({api,notify,onSelect,onUpdate,onMemory=()=>{}}
     if(session.busy&&!running)list.append(taskRow({label:session.active,state:'running',message:progress||'Acompanhe os detalhes no painel da tarefa.'}));
     const ordered=[...snapshot.tasks.filter(task=>task.state==='running'),...pending,...snapshot.tasks.filter(task=>!['queued','running'].includes(task.state)).slice(-10).reverse()];
     for(const task of ordered)list.append(taskRow(task,['queued','running'].includes(task.state)));
-    for(const item of session.history.slice(0,5))if(!snapshot.tasks.some(task=>task.label===item.label))list.append(taskRow({label:item.label,state:item.status,message:item.error||'Operação desta sessão'}));
+    for(const item of session.history.slice(0,5))if(!snapshot.tasks.some(task=>task.label===item.label))list.append(taskRow({...item,state:item.status,message:item.error||(item.projectId?'Resultado vinculado ao projeto.':'Registro desta sessão sem vínculo com arquivo.')}));
     if(!list.children.length)list.append(element('p','qwen-note','Sua fila está vazia. Downloads, instalações e validações aparecem aqui.'));
   }
   function renderAvailability(){
@@ -73,7 +76,7 @@ export function createModelCenter({api,notify,onSelect,onUpdate,onMemory=()=>{}}
   function receive(value){snapshot=value;renderModels();renderAvailability();renderTasks();onUpdate();}
   byId('planner-use-ready').addEventListener('click',()=>{if(byId('planner-use-ready').dataset.model)selectModel(byId('planner-use-ready').dataset.model);});
   byId('task-bar-toggle').addEventListener('click',()=>{const panel=byId('task-drawer');panel.hidden=!panel.hidden;byId('task-bar-toggle').setAttribute('aria-expanded',String(!panel.hidden));});
-  byId('task-drawer-close').addEventListener('click',()=>{byId('task-drawer').hidden=true;byId('task-bar-toggle').setAttribute('aria-expanded','false');byId('task-bar-toggle').focus();});
+  byId('task-drawer-close').addEventListener('click',()=>{hidePanel(byId('task-drawer'));byId('task-bar-toggle').setAttribute('aria-expanded','false');byId('task-bar-toggle').focus();});
   byId('task-drawer').addEventListener('keydown',event=>{if(event.key==='Escape')byId('task-drawer-close').click();});
   api.onModels(receive);
   api.onPlanner(event=>{if(event.type==='progress'){progress=event.message;renderTasks();}});

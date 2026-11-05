@@ -156,3 +156,11 @@ test('casing Windows não trava validação e leitura ativa mantém running',()=
   const app=fixture();assertLocalWritePath(app.repositoryRoot,join(app.repositoryRoot,'inside.txt').toLowerCase());
   const project=projectWithMission(app);project.missions[0].status='running';app.projects.save(project);app.active={projectId:project.id};assert.equal(app.projects.get(project.id).missions[0].status,'running');app.active=null;assert.equal(app.projects.get(project.id).missions[0].status,'unknown');
 });
+
+test('fila guarda destino e somente as missões efetivamente iniciadas',async()=>{
+  const app=fixture();let project=projectWithMission(app);const first=project.missions[0].id;
+  project=app.projectAction({action:'mission',id:project.id,input:{title:'Outra etapa',agentId:project.agents[0].id,tool:'mcp_status',arguments:{}}});
+  const result=await app.runProject({id:project.id,missionId:first});
+  assert.deepEqual(result.missionIds,[first]);assert.deepEqual(app.status().history[0].missionIds,[first]);assert.equal(app.status().history[0].projectId,project.id);
+  assert.equal(app.projects.get(project.id).missions[1].status,'pending');
+});

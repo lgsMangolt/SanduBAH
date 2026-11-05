@@ -27,7 +27,29 @@ async function run(){
   let update;const updateDeadline=Date.now()+120000;
   do{update=await page.evaluate(()=>window.sandubah.updatesStatus());if(!['idle','checking'].includes(update.phase))break;await new Promise(resolve=>setTimeout(resolve,500));}while(Date.now()<updateDeadline);
   assert.ok(!['idle','checking'].includes(update.phase),'Startup update check did not finish.');assert.ok(update.checkedAt);assert.equal(fs.existsSync(join(root,'build/sandubah/gui/updates')),false);checks.push('automatic-public-check-without-download-or-install');
-  const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();await page.locator('.main-nav [data-view="tutorials"]').click();await page.locator('#desktop-updates').waitFor();assert.match(await page.locator('#desktop-updates').textContent(),/só baixa e instala depois de você confirmar/i);assert.equal(await page.locator('.tutorial-card').count(),21);checks.push('update-confirmations-explained-in-panel');
+  const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();
+  assert.equal(await page.locator('body').getAttribute('data-current-view'),'home');
+  assert.equal(await page.locator('[data-start-action]').count(),3);
+  const projectsBefore=await page.evaluate(()=>window.sandubah.project({action:'list'}));
+  await page.locator('[data-start-action="study"]').click();
+  await page.locator('#brain-study-topic').waitFor();
+  assert.deepEqual(await page.evaluate(()=>window.sandubah.project({action:'list'})),projectsBefore);
+  await page.locator('.brand').click();
+  await page.locator('[data-start-action="create"]').click();
+  await page.locator('#guided-next').waitFor();
+  assert.equal(await page.locator('#planner-advanced').evaluate(element=>element.open),false);
+  await page.locator('.brand').click();
+  await page.locator('[data-start-action="continue"]').click();
+  await page.waitForFunction(()=>document.body.dataset.currentView==='projects');
+  if(mode==='resume'){
+    await page.getByRole('heading',{name:'VM lifecycle example',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Abrir projeto',exact:true}).click();
+    const fixture=JSON.parse(fs.readFileSync(fixtureFile,'utf8'));
+    await page.waitForFunction(id=>document.querySelector('#qwen-project')?.value===id,fixture.projectId);
+    await page.locator('#guided-next').waitFor();
+  }
+  checks.push('guided-create-study-continue');
+  await page.locator('.main-nav [data-view="tutorials"]').click();await page.locator('#desktop-updates').waitFor();assert.match(await page.locator('#desktop-updates').textContent(),/só baixa e instala depois de você confirmar/i);assert.equal(await page.locator('.tutorial-card').count(),21);checks.push('update-confirmations-explained-in-panel');
   const tutorials=page.locator('#tutorials-view');
   await tutorials.getByRole('tab',{name:'Avançado',exact:true}).click();
   await tutorials.getByRole('searchbox',{name:'Buscar tutoriais'}).fill('harness2');

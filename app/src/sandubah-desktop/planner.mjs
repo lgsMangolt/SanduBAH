@@ -2,6 +2,7 @@ import {createModelCenter} from './models.mjs';
 import {createPlannerSessions,plannerMessages} from './planner-sessions.mjs';
 import {advanceReceipt,receiptView} from './planner-receipts.mjs';
 import {createMediaPicker} from './media-ui.mjs';
+import {createPlannerReadiness} from './planner-readiness.mjs';
 
 export function createPlanner({api,notify}) {
   const byId=id=>document.getElementById(id);
@@ -9,6 +10,9 @@ export function createPlanner({api,notify}) {
   const sessions=createPlannerSessions(localStorage,message=>notify(message,true)),images=new Map();
   state.projectId=sessions.active();
   const modeRow=document.createElement('div');modeRow.className='planner-work-mode';const modeLabel=document.createElement('label');modeLabel.textContent='O que vamos fazer?';modeLabel.htmlFor='planner-action';const action=document.createElement('select');action.id='planner-action';action.add(new Option('Conversar e planejar','plan'));action.add(new Option('Construir / alterar o projeto','code'));const executorNote=document.createElement('small');executorNote.className='qwen-note';executorNote.textContent='Construção usa o Codex instalado para criar arquivos e testar aqui.';modeRow.append(modeLabel,action,executorNote);byId('qwen-form').prepend(modeRow);
+  const readinessBox=document.createElement('section');modeRow.after(readinessBox);
+  const readiness=createPlannerReadiness({container:readinessBox,onChoose:()=>{byId('planner-provider').focus();byId('planner-provider').scrollIntoView({block:'center'});},onPlan:()=>{action.value='plan';saveSession();controls();}});
+  byId('qwen-send').setAttribute('aria-describedby','planner-start-reason');
   const mediaBox=document.createElement('div');mediaBox.className='media-picker';byId('qwen-prompt').after(mediaBox);byId('qwen-image').hidden=true;byId('qwen-image-name').hidden=true;
   const media=createMediaPicker({api,container:mediaBox,scope:()=>`planner:${state.projectId||'new'}`,notify});
   action.onchange=()=>{saveSession();controls();};
@@ -42,8 +46,9 @@ export function createPlanner({api,notify}) {
   }
   function controls(){
     const locked=state.busy||state.switching;
-    const executor=state.cloud?.providers.find(provider=>provider.id==='codex'),canCode=Boolean(executor?.installed&&executor?.authenticated);
-    byId('qwen-send').disabled=!(action.value==='code'?canCode:state.ready)||locked;
+    const projectName=state.projectId?[...byId('qwen-project').options].find(option=>option.value===state.projectId)?.textContent||'':'';
+    const readinessView=readiness.update({cloud:state.cloud,ready:state.ready,action:action.value,projectName,statusError:state.statusError},locked);
+    byId('qwen-send').disabled=!readinessView.canSubmit||locked;
     byId('qwen-send').textContent=action.value==='code'?'Construir no projeto →':'Planejar meu projeto →';action.disabled=locked;media.setBusy(locked);
     byId('planner-provider').disabled=locked;
     byId('planner-cloud-model').disabled=locked||state.provider==='local';
@@ -56,6 +61,7 @@ export function createPlanner({api,notify}) {
     for(const button of document.querySelectorAll('[data-planner-option]'))button.disabled=locked;
     byId('planner-empty').hidden=false;
     resourceAdvice();
+    window.dispatchEvent(new CustomEvent('sandubah:planner-updated'));
   }
   const retrievalKey=()=>`sandubah-brain-mode:${byId('qwen-project').value||'new'}`;
   function restoreContextMode(){let value;try{value=localStorage.getItem(retrievalKey());}catch{}byId('brain-context-mode').value=value==='complete'?'complete':'economic';}
@@ -141,7 +147,7 @@ export function createPlanner({api,notify}) {
       if(state.selection&&JSON.stringify({...state.selection,effort:state.selection.effort||null})!==JSON.stringify({...status.cloud.selection,effort:status.cloud.selection.effort||null})){
         await api.plannerSelect(state.selection);status=await api.plannerStatus();if(requested!==revision)return;
       }
-      state.ready=status.ready;state.selection={...status.cloud.selection};
+      state.ready=status.ready;state.statusError=null;state.selection={...status.cloud.selection};
       state.cloud=status.cloud;state.provider=status.cloud?.selection.provider||'local';renderAccounts();
       document.body.dataset.plannerProvider=state.provider;
       state.model=status.model;
@@ -149,14 +155,14 @@ export function createPlanner({api,notify}) {
       document.querySelector('.planner-local-badge').textContent=state.provider==='local'?'● No seu PC':'● Sua conta na nuvem';
       if(state.provider!=='local')byId('planner-use-ready').hidden=true;
       byId('qwen-status').textContent=status.message;
-      byId('planner-state-title').textContent=status.ready?'IA pronta para planejar':'Esta IA ainda não está disponível';
+      byId('planner-state-title').textContent=status.ready?(state.provider==='local'?'IA local validada':'Configuração local encontrada · acesso ainda não verificado'):'Esta IA ainda não está disponível';
       byId('planner-readiness').dataset.state=status.ready?'ready':'blocked';
       restoreContextMode();
       if(state.provider!=='local')byId('qwen-metrics').textContent='Fotos e quadros de vídeo podem ser enviados após confirmação. Nuvem usa a cota da conta, sem reserva de VRAM local.';
       else if(status.validation)byId('qwen-metrics').textContent=`Último teste: pico amostrado de ${(status.validation.devicePeakSampledBytes/1e9).toFixed(2)} GB na GPU inteira, incluindo outros apps.`;
       else byId('qwen-metrics').textContent='Este modelo ainda não tem validação aprovada nesta versão.';
       await refreshOptions();controls();
-    }catch(error){if(requested!==revision)return;state.ready=false;byId('qwen-status').textContent=error.message;byId('planner-state-title').textContent='Não foi possível consultar a IA';controls();}
+    }catch(error){if(requested!==revision)return;state.ready=false;state.statusError=error.message;byId('qwen-status').textContent=error.message;byId('planner-state-title').textContent='Não foi possível consultar a IA';controls();}
   }
   async function selectCloud(provider,model,effort=state.efforts[`${provider}:${model}`]||null){
     saveSession();++revision;state.switching=true;controls();
@@ -188,7 +194,7 @@ export function createPlanner({api,notify}) {
     const attempt=state.messages.length-1;state.attempt=attempt;state.stopping=false;setDelivery(attempt,'sending');saveSession();byId('qwen-status').textContent=state.provider==='local'?'Conferindo memória e iniciando um worker local…':'Revise o envio à nuvem. A consulta só começa após sua confirmação…';
     try{
       let response;
-      if(action.value==='code'){byId('qwen-status').textContent='Preparando arquivos e missão do projeto. Revise a execução do Codex nesta tela…';response=await api.buildProject({...contextPayload(prompt),history:state.history.slice(-6)});}
+      if(action.value==='code'){byId('qwen-status').textContent='Preparando arquivos e missão do projeto. Revise a execução do Codex nesta tela…';response=await api.buildProject({...contextPayload(prompt),history:state.history.slice(-6),selection:{...state.selection}});}
       else{const context=await previewContext();if(context.blocked)throw new Error(context.message);response=await api.plannerChat({...contextPayload(prompt),contextFingerprint:context.fingerprint,history:state.history.slice(-6),imageId:state.provider==='local'?state.image?.id:undefined});}
       if(response.cancelled){setDelivery(attempt,'cancelled');byId('brain-token-usage').textContent='Envio cancelado antes da geração; nenhuma nova contagem de tokens.';byId('qwen-status').textContent='Envio cancelado. Nenhuma consulta ao modelo foi iniciada.';return;}
       if(response.contextInfo)renderContext(response.contextInfo);
@@ -203,5 +209,5 @@ export function createPlanner({api,notify}) {
   api.onPlanner(event=>{if(event.type==='project'&&state.running&&action.value==='code'){state.projectId=event.projectId;sessions.activate(state.projectId);const select=byId('qwen-project');if(![...select.options].some(option=>option.value===event.projectId))select.add(new Option(event.name,event.projectId));select.value=event.projectId;media.refresh(`planner:${state.projectId}`).catch(error=>notify(error.message,true));window.dispatchEvent(new CustomEvent('sandubah:project-selected',{detail:{id:state.projectId}}));saveSession();}if(event.type==='progress')byId('qwen-status').textContent=event.message;if(event.type==='delivery'&&['sent','delivered','read'].includes(event.status)&&state.running&&Number.isInteger(state.attempt)&&!state.stopping){setDelivery(state.attempt,event.status);showTyping(state.messages[state.attempt].receipt);saveSession();}});
   api.onWorker(({projectId,event})=>{if(state.running&&action.value==='code'&&state.projectId===projectId){if(['turn.started','item.started','item.completed'].includes(event.type)){setDelivery(state.attempt,event.type==='turn.started'?'delivered':'read');showTyping(state.messages[state.attempt].receipt);}byId('qwen-status').textContent=event.item?.type==='file_change'?'O agente está atualizando os arquivos do projeto.':event.item?.type==='command_execution'?'O agente está executando código e testes.':'O agente está trabalhando no projeto.';}});
   const models=createModelCenter({api,notify,onSelect(){selectCloud('local',null);},onUpdate(){if(!state.running&&!state.switching)refresh();},onMemory(readings){state.resources=readings;resourceAdvice();}});
-  return {async prepareTutorialProject(id,prompt){if(state.busy||state.running||state.switching)throw new Error('Aguarde o worker antes de preparar o exercício.');const existing=sessions.load(id);if(existing?.prompt||existing?.history?.length)throw new Error('Este projeto já tem conversa ou rascunho; nada foi sobrescrito.');saveSession();state.projectId=id;sessions.activate(id);restoreSession();byId('qwen-prompt').value=prompt;action.value='plan';saveSession();await refresh();},openProject(id){saveSession();state.projectId=id;sessions.activate(id);restoreSession();refresh();},show(view){byId('planner-view').hidden=view!=='planner';if(view==='planner'){window.dispatchEvent(new CustomEvent('sandubah:project-selected',{detail:{id:state.projectId}}));refresh();models.refresh();refreshSources().catch(error=>notify(error.message,true));}},status(status){state.busy=status.busy;controls();models.status(status);}};
+  return {guidedContext:()=>({projectId:state.projectId,hasPlan:state.history.some(item=>item.role==='assistant'),ready:state.ready,cloud:state.cloud,selection:state.selection,model:state.model,running:state.running}),prepareGuidedBuild(prompt){if(state.busy||state.running||state.switching)throw new Error('Aguarde a etapa atual antes de preparar outra.');if(!byId('qwen-prompt').value.trim()){const idea=!state.projectId?state.history.find(item=>item.role==='user')?.content?.slice(0,900):null;byId('qwen-prompt').value=(idea?idea+'\n\n':'')+prompt;}action.value='code';saveSession();controls();if(state.provider!=='codex'||!state.ready){window.dispatchEvent(new CustomEvent('sandubah:guided-setup'));notify('Pedido preparado e preservado. Confira o Codex para construir; sua IA não foi trocada.');return;}byId('qwen-form').requestSubmit();},async prepareTutorialProject(id,prompt){if(state.busy||state.running||state.switching)throw new Error('Aguarde o worker antes de preparar o exercício.');const existing=sessions.load(id);if(existing?.prompt||existing?.history?.length)throw new Error('Este projeto já tem conversa ou rascunho; nada foi sobrescrito.');saveSession();state.projectId=id;sessions.activate(id);restoreSession();byId('qwen-prompt').value=prompt;action.value='plan';saveSession();await refresh();},openProject(id){saveSession();state.projectId=id;sessions.activate(id);restoreSession();refresh();},show(view){byId('planner-view').hidden=view!=='planner';if(view==='planner'){window.dispatchEvent(new CustomEvent('sandubah:project-selected',{detail:{id:state.projectId}}));refresh();models.refresh();refreshSources().catch(error=>notify(error.message,true));}},status(status){state.busy=status.busy;controls();models.status(status);}};
 }

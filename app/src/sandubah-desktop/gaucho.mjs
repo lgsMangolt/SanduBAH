@@ -1,9 +1,10 @@
 import {createFieldPanel} from './gaucho-field.mjs';
+import {avatarCanvas,createAvatarEditor} from './gaucho-avatar.mjs';
 // Aba Gauchinhos: criar do zero, conversar, corrigir e dar uma base própria a cada agente personalizado.
 const node=(tag,className,text)=>{const value=document.createElement(tag);if(className)value.className=className;if(text!==undefined)value.textContent=text;return value;};
 const button=(text,action,className='button')=>{const value=node('button',className,text);value.type='button';value.addEventListener('click',action);return value;};
 const kib=bytes=>bytes<1024?`${bytes} B`:bytes<1048576?`${(bytes/1024).toFixed(1).replace('.',',')} KB`:`${(bytes/1048576).toFixed(1).replace('.',',')} MB`;
-const tabs=[['chat','Conversa'],['tasks','Tarefas'],['lessons','Lições'],['dataset','Dataset'],['field','Campo'],['tools','Ferramentas'],['knowledge','Base'],['settings','Ajustes']];
+const tabs=[['chat','Conversa'],['appearance','Aparência'],['tasks','Tarefas'],['lessons','Lições'],['dataset','Dataset'],['field','Campo'],['tools','Ferramentas'],['knowledge','Base'],['settings','Ajustes']];
 const sourceLabels={correction:'Correção',example:'Exemplo',task:'Tarefa',upload:'Arquivo',manual:'Escrito à mão'};
 const levelLabels={insufficient:'Pouco para treinar',minimum:'Mínimo para um teste',good:'Bom volume'};
 const taskStatus={pending:'Pendente',done:'Entregue',error:'Erro',review:'Esperando sua revisão',blocked:'Bloqueada por limite'};
@@ -13,6 +14,7 @@ const changeLabels={new:'novo',modified:'alterado',deleted:'removido'};
 export function weightLine(gaucho){return `${gaucho.lessons} ${gaucho.lessons===1?'lição':'lições'} · ${gaucho.documents} ${gaucho.documents===1?'documento':'documentos'} · ${kib(gaucho.weight.bytes)} · ~${gaucho.weight.lessonTokens.toLocaleString('pt-BR')} tokens de lições por mensagem`;}
 
 export function createGauchos({api,container,notify}){
+  let avatarEditor=null;
   let visible=false,list=[],current=null,tab='chat',busy=false,providers=[],sources=[],rating=null,draft='',fineTune={model:'Qwen/Qwen2.5-0.5B-Instruct',readiness:null,exported:null},fieldPresets={presets:[],limits:{episodes:5000,timeMs:15000}};
   try{tab=localStorage.getItem('sandubah-gaucho-tab')||'chat';}catch{}
   const run=action=>async(...args)=>{try{await action(...args);}catch(error){notify(error.message,true);}};
@@ -27,11 +29,11 @@ export function createGauchos({api,container,notify}){
   async function open(id){if(current?.id!==id){draft='';fineTune={...fineTune,readiness:null,exported:null};}current=await api.gaucho({action:'get',id});try{localStorage.setItem('sandubah-gaucho',id);}catch{}rating=null;draw();}
   function replace(updated){current=updated;const index=list.findIndex(item=>item.id===updated.id);const summary={...updated};if(index>=0)list[index]=summary;else list.unshift(summary);draw();}
   function draw(){
-    if(!visible)return;container.replaceChildren();
+    if(!visible)return;avatarEditor?.dispose();avatarEditor=null;container.replaceChildren();
     const layout=node('div','gaucho-layout'),side=node('aside','gaucho-side'),main=node('section','gaucho-main');
     side.append(node('h2','','Seus gauchinhos'),node('p','muted','Cada um começa do zero e aprende só com o que você ensina. Quanto mais lições e documentos, mais ele pesa em cada mensagem.'));
     const cards=node('div','gaucho-cards');
-    for(const gaucho of list){const card=button('',run(()=>open(gaucho.id)),`gaucho-card${current?.id===gaucho.id?' is-selected':''}`);card.append(node('strong','',gaucho.name),node('small','muted',weightLine(gaucho)));cards.append(card);}
+    for(const gaucho of list){const card=button('',run(()=>open(gaucho.id)),`gaucho-card${current?.id===gaucho.id?' is-selected':''}`);card.append(avatarCanvas(gaucho.appearance,gaucho.name,52),node('strong','',gaucho.name),node('small','muted',weightLine(gaucho)));cards.append(card);}
     if(!list.length)cards.append(node('p','muted','Nenhum gauchinho ainda.'));
     side.append(cards,createForm());layout.append(side,main);
     if(current)main.append(...detail());else main.append(node('div','empty-state','Crie um gauchinho ao lado para começar a ensinar.'));
@@ -41,16 +43,26 @@ export function createGauchos({api,container,notify}){
     const form=node('form','gaucho-create');const name=node('input','text-input');name.placeholder='Nome, ex.: Tchê Planilhas';name.maxLength=60;name.id='gaucho-name';
     const persona=node('textarea','text-input');persona.rows=3;persona.maxLength=2000;persona.placeholder='Personalidade (opcional): como fala, no que é bom';persona.id='gaucho-persona';
     const submit=node('button','button primary','Novo gauchinho');submit.type='submit';
-    form.append(node('h3','','Criar do zero'),name,persona,submit);
-    form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{const provider=providers.find(item=>item.installed&&item.models?.length);const selection=provider?{provider:provider.id,model:provider.models[0].id}:null;const created=await api.gaucho({action:'create',input:{name:name.value,persona:persona.value,selection}});list.unshift(created);current=created;try{localStorage.setItem('sandubah-gaucho',created.id);}catch{}tab='chat';notify(`${created.name} criado. Ele ainda não sabe nada: comece conversando e corrigindo.`);draw();})();});
+    form.append(node('h3','','Criar do zero'),name,persona,node('p','muted','Depois de criar, escolha as peças e animações na aba Aparência.'),submit);
+    form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{const provider=providers.find(item=>item.installed&&item.models?.length);const selection=provider?{provider:provider.id,model:provider.models[0].id}:null;const created=await api.gaucho({action:'create',input:{name:name.value,persona:persona.value,selection}});list.unshift(created);current=created;tab='appearance';try{localStorage.setItem('sandubah-gaucho',created.id);localStorage.setItem('sandubah-gaucho-tab',tab);}catch{}notify(`${created.name} criado. Personalize a aparência e depois ensine na aba Conversa.`);draw();})();});
     return form;
   }
   function detail(){
-    const header=node('header','gaucho-header');header.append(node('h2','',current.name),node('p','muted',current.persona||'Sem personalidade definida. Ajuste em Ajustes.'),node('p','gaucho-weight',weightLine(current)));
+    const header=node('header','gaucho-header');header.append(avatarCanvas(current.appearance,current.name,104),node('h2','',current.name),node('p','muted',current.persona||'Sem personalidade definida. Ajuste em Ajustes.'),node('p','gaucho-weight',weightLine(current)));
     const nav=node('nav','section-tabs gaucho-tabs');nav.setAttribute('aria-label','Seções do gauchinho');
     for(const [id,label] of tabs){const item=button(label,()=>{tab=id;try{localStorage.setItem('sandubah-gaucho-tab',id);}catch{}draw();},`section-tab${tab===id?' active':''}`);item.setAttribute('aria-current',tab===id?'page':'false');nav.append(item);}
-    const body=tab==='tools'?toolsPanel():tab==='field'?createFieldPanel({api,gaucho:current,run,notify,isBusy:()=>busy,presets:fieldPresets,onChange:replace}):tab==='dataset'?datasetPanel():tab==='tasks'?tasks():tab==='lessons'?lessons():tab==='knowledge'?knowledge():tab==='settings'?settings():chat();
+    const body=tab==='appearance'?appearancePanel():tab==='tools'?toolsPanel():tab==='field'?createFieldPanel({api,gaucho:current,run,notify,isBusy:()=>busy,presets:fieldPresets,onChange:replace}):tab==='dataset'?datasetPanel():tab==='tasks'?tasks():tab==='lessons'?lessons():tab==='knowledge'?knowledge():tab==='settings'?settings():chat();
     return [header,nav,body];
+  }
+  function appearancePanel(){
+    const id=current.id;
+    avatarEditor=createAvatarEditor({appearance:current.appearance,onSave:async appearance=>{
+      const updated=await api.gaucho({action:'update',id,input:{appearance}});
+      const index=list.findIndex(item=>item.id===id);if(index>=0)list[index]=updated;
+      if(current?.id===id){current=updated;draw();}
+      notify('Aparência salva. Seu modelo, conversas e permissões não mudaram.');
+    }});
+    return avatarEditor.element;
   }
   function chat(){
     const panel=node('div','gaucho-chat'),log=node('div','gaucho-messages');log.setAttribute('aria-live','polite');
@@ -231,5 +243,5 @@ export function createGauchos({api,container,notify}){
     form.addEventListener('submit',event=>{event.preventDefault();run(async()=>{const selection=model.value?{provider:provider.value,model:model.value,effort:effort.value||null}:null;replace(await api.gaucho({action:'update',id:current.id,input:{name:name.value,persona:persona.value,selection}}));notify('Ajustes salvos.');})();});
     return form;
   }
-  return {show(view){visible=view==='gauchos';container.hidden=!visible;if(visible)run(load)();}};
+  return {show(view){visible=view==='gauchos';container.hidden=!visible;if(!visible){avatarEditor?.dispose();avatarEditor=null;}if(visible)run(load)();}};
 }

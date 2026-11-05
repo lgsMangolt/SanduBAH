@@ -2,7 +2,7 @@
 
 **Um ambiente desktop para planejar projetos com agentes de IA (Codex e Claude) sem perder o contexto.**
 
-> 🇺🇸 **In English:** SanduBAH is a Windows desktop app (Electron + Node.js) that lets developers plan projects with AI agents (OpenAI Codex and Anthropic Claude via their official CLIs and a local MCP server), keep project knowledge in linked Markdown, and approve every action before it runs. [Live demo](https://lgsmangolt.github.io/SanduBAH/) · [Download v0.1.0](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)
+> 🇺🇸 **In English:** SanduBAH is a Windows desktop app (Electron + Node.js) that lets developers plan projects with AI agents (OpenAI Codex and Anthropic Claude via their official CLIs and a local MCP server), keep project knowledge in linked Markdown, and approve every action before it runs. [Live demo](https://lgsmangolt.github.io/SanduBAH/) · [Download for Windows](https://github.com/lgsMangolt/SanduBAH/releases/latest)
 
 [![Testes](https://github.com/lgsMangolt/SanduBAH/actions/workflows/test.yml/badge.svg)](https://github.com/lgsMangolt/SanduBAH/actions/workflows/test.yml)
 ![Status](https://img.shields.io/badge/status-pr%C3%A9via%20experimental-orange)
@@ -12,7 +12,7 @@
 <!-- TODO: gravar um GIF de 10–20s do app em uso, salvar em assets/demo.gif e trocar a imagem abaixo -->
 ![Escritório do SanduBAH em pixel art, onde os papéis dos agentes aparecem](assets/office.png)
 
-**[▶ Abrir a demonstração online](https://lgsmangolt.github.io/SanduBAH/)** · **[↓ Baixar para Windows (v0.1.0)](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0)**
+**[▶ Abrir a demonstração online](https://lgsmangolt.github.io/SanduBAH/)** · **[↓ Baixar para Windows](https://github.com/lgsMangolt/SanduBAH/releases/latest)**
 
 ---
 
@@ -50,7 +50,7 @@ npm start    # abre a demonstração em http://localhost:3000 (baixa o pacote se
 
 Sem Node, também funciona abrindo `index.html` direto no navegador.
 
-Para o aplicativo completo, use o [instalador da Release](https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.1.0) ou veja [como trabalhar no código desktop](app/docs/customization/SANDUBAH-SOURCE.md).
+Para o aplicativo completo, use o [instalador da Release](https://github.com/lgsMangolt/SanduBAH/releases/latest) ou veja [como trabalhar no código desktop](app/docs/customization/SANDUBAH-SOURCE.md).
 
 ## Arquitetura
 
@@ -71,18 +71,37 @@ O backend conversa com o servidor MCP local. As CLIs rodam com MCP, plugins e ho
 
 ## Decisões técnicas e desafios
 
+### Desafios que acompanhei
+
+Eu propus as funcionalidades, defini como elas deveriam se comportar, acompanhei o desenvolvimento e testei o que está indicado como confirmado. O código foi escrito com auxílio de Claude e Codex.
+
+1. **Simplificar a criação de projetos**
+   - *Proposta:* reunir numa única interface os agentes, harnesses, MCPs, CLIs e skills do Ruflo, o Codex, o Claude e o Cérebro em Markdown. Priorizei o planejamento por conversa, para que iniciantes e intermediários não dependam de tantos comandos.
+   - *O que acompanhei:* num projeto piloto, o planejador criou o projeto, salvou os Markdown e organizou as etapas, e o protótipo evoluiu funcionando na prévia lateral.
+
+2. **Preservar o projeto ao trocar de IA**
+   - *Problema:* ao trocar o modelo de Haiku para Opus, o projeto ativo deixava de aparecer na tela.
+   - *O que pedi:* que a escolha da IA fosse independente do projeto, preservando a conversa e os Markdown.
+   - *Resultado:* depois dos ajustes, testei e confirmei que consigo trocar de IA mantendo o projeto, a conversa e os Markdown.
+
+3. **Separar missões concluídas de produto pronto**
+   - *Problema:* o projeto piloto aparecia com 100% de progresso enquanto ainda era um protótipo.
+   - *O que pedi:* progressos independentes para as missões e para o produto, com as etapas Planejamento, Protótipo, MVP e Produção, cada uma com seu próprio checklist.
+   - **Validação na interface pelo autor: pendente.**
+
+### Decisões técnicas
+
 - **Confirmação antes de qualquer envio.** Nenhuma mensagem, arquivo ou comando chega ao modelo sem aprovação explícita. Isso evita gasto de cota inesperado e vazamento de dados do projeto.
 - **CLIs oficiais em vez de chaves de API.** Cada pessoa usa a própria conta do Codex ou do Claude. Para isolar as execuções, o app copia a sessão da CLI para um perfil local privado. Nada é enviado a servidores do SanduBAH.
 - **Um worker por vez.** Limitar a execução a um agente simultâneo deixa o comportamento previsível e mais fácil de acompanhar.
 - **Instalador testado em VM limpa.** Um workflow do GitHub Actions instala, reinstala e desinstala o app em um Windows Server 2025 novo, com dados fictícios, para verificar que o pacote não depende da minha máquina. É um ambiente de teste, não uma garantia para todas as versões do Windows.
 - **Demonstração web sem rede.** A prévia pública tem uma Content-Security-Policy que bloqueia qualquer requisição externa, e um teste automatizado garante isso.
 
-<!-- TODO: troque ou complete com os desafios que VOCÊ enfrentou — é isso que o recrutador quer ler -->
-
 ## Funcionalidades
 
 **Principal**
 
+- Tela inicial com **Criar**, **Estudar** e **Continuar**. A conversa do projeto mostra a próxima ação, o checklist e o resultado na mesma tela.
 - Novo projeto com planejamento guiado por IA
 - Meus projetos, com busca e continuidade
 - Cérebro: base de conhecimento em Markdown
@@ -95,9 +114,9 @@ O backend conversa com o servidor MCP local. As CLIs rodam com MCP, plugins e ho
 - Modelos locais (Qwen/AirLLM) e preparação de fine-tuning
 - Skill de consulta jurídica
 
-### Novidades nos fontes, depois da v0.1.0
+### Outras funcionalidades do desktop
 
-Estas funcionalidades estão no código em [`app/`](app/docs/customization/SANDUBAH-SOURCE.md), com testes de regressão, mas **ainda não chegaram ao instalador**. A próxima Release precisa de um build e de uma validação próprios.
+O código do desktop está em [`app/`](app/docs/customization/SANDUBAH-SOURCE.md). Algumas integrações requerem configuração adicional.
 
 - **Trilha do projeto:** prompt enxuto → Grill-me → prompt refinado (`PROMPT.md`, gerado localmente e lido pelos agentes) → rascunho → protótipos. Cada passo mostra o estado real, calculado a partir dos arquivos.
 - **Histórico de versões:** cada versão vira um commit no padrão `feat:`/`fix:`/`docs:`, num git local que fica fora da pasta do agente, com diff e volta a qualquer versão.

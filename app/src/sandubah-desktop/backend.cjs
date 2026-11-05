@@ -403,15 +403,16 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
     this.emit('state', this.status());
     try {
       const result = await operation();
-      this.history.unshift({ label, startedAt, status:result?.cancelled?'cancelada':result?.stopped?'pausada':resultFailed(result)?'erro':'concluída' });
+      this.history.unshift({ label, startedAt, status:result?.cancelled?'cancelada':result?.stopped?'pausada':resultFailed(result)?'erro':'concluída',...this.operationDestination() });
       if(!result?.cancelled)this.assessOperation(label,result,!resultFailed(result)&&!result?.stopped);
       return redact(result);
     } catch (error) {
-      this.history.unshift({ label, startedAt, status:'erro', error:error.message });
+      this.history.unshift({ label, startedAt, status:'erro', error:error.message,...this.operationDestination() });
       this.assessOperation(label,{error:error.message},false);
       throw error;
     } finally { this.active = null; this.emit('state',this.status()); queueMicrotask(()=>this.models.pump()); }
   }
+  operationDestination(){return this.active?.projectId?{projectId:this.active.projectId,view:'harness',missionIds:[...(this.active.missionIds||[])]}:{};}
   assessOperation(label,result,success){
     try{this.knowledge?.capture(label,redact(result),success);}catch{this.emit('output',{text:'A triagem do cérebro não pôde ser salva. O resultado da operação foi preservado.'});}
   }
@@ -486,6 +487,7 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
       const project=this.projects.get(id);
       const directory=this.projects.location(id);
       this.active.projectId=id;
+      this.active.missionIds=[];
       const missions=project.missions.filter(mission=>mission.status==='pending'&&(!missionId||mission.id===missionId));
       if(this.legal)for(const mission of missions)if(mission.engine&&mission.engine!=='mcp')await this.legal.prepare(project.goal+'\n'+mission.instructions);
       if(!missions.length)throw new Error('Não há missões pendentes nesta seleção.');
@@ -512,7 +514,7 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
         if(mission.engine&&mission.engine!=='mcp')throw new Error('Executor inválido.');
         return {mission,agent,request:this.prepare(`mcp:${mission.tool}`,mission.arguments,directory)};
       });
-      if(!await this.confirm({entry:{name:`${project.name}: ${plan.length} missão(ões)`,kind:'harness'},project:directory,arguments:{workerLimit:1,registerAgents:plan.filter(item=>!item.agent.registered).map(item=>({agentId:item.agent.id,agentType:item.agent.role})),missions:plan.map(item=>item.analysis?{title:item.mission.title,...item.analysis,notice:'Produz estudo/Markdown sem ferramentas ou comandos. Nuvem usa sua conta/cota; local mantém validação e teto de memória. Não instala skills.'}:item.settings?{title:item.mission.title,executor:'Codex instalado · usa sua conta e pode consumir créditos',model:item.settings.model||'padrão do Codex',workspace:this.projects.workspace(id),instructions:item.mission.instructions,files:item.mission.files,context:project.context,rea:item.reaReview?{tool:item.reaReview.tool,version:item.reaReview.version,target:item.reaReview.target,sha256:item.reaReview.sha256,files:item.reaReview.files,callLimit:1,scope:item.reaReview.scope}:null,profile:item.reaReview?'Somente o MCP REA restrito a este snapshot aprovado. Sem outros MCPs, plugins, gateway ou alteração no config.toml.':'Configuração ignorada apenas neste processo. Login existente. Sem MCPs, plugins, gateway ou alterações no config.toml.'}:{title:item.mission.title,tool:item.request.entry.name,arguments:item.request.arguments})}}))return {cancelled:true};
+      if(!await this.confirm({entry:{name:`${project.name}: ${plan.length} missão(ões)`,kind:'harness'},project:directory,arguments:{workerLimit:1,registerAgents:plan.filter(item=>!item.agent.registered).map(item=>({agentId:item.agent.id,agentType:item.agent.role})),missions:plan.map(item=>item.analysis?{title:item.mission.title,...item.analysis,notice:'Produz estudo/Markdown sem ferramentas ou comandos. Nuvem usa sua conta/cota; local mantém validação e teto de memória. Não instala skills.'}:item.settings?{title:item.mission.title,executor:'Codex instalado · usa sua conta e pode consumir créditos',model:item.settings.model||'padrão do Codex',effort:item.settings.effort??null,workspace:this.projects.workspace(id),instructions:item.mission.instructions,files:item.mission.files,context:project.context,rea:item.reaReview?{tool:item.reaReview.tool,version:item.reaReview.version,target:item.reaReview.target,sha256:item.reaReview.sha256,files:item.reaReview.files,callLimit:1,scope:item.reaReview.scope}:null,profile:item.reaReview?'Somente o MCP REA restrito a este snapshot aprovado. Sem outros MCPs, plugins, gateway ou alteração no config.toml.':'Configuração ignorada apenas neste processo. Login existente. Sem MCPs, plugins, gateway ou alterações no config.toml.'}:{title:item.mission.title,tool:item.request.entry.name,arguments:item.request.arguments})}}))return {cancelled:true};
       this.queueStopped=false;
       const client=this.createProjectClient(directory);
       this.active.client=client;
@@ -521,7 +523,7 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
           if(this.queueStopped)break;
           const {mission,agent,request}=item;
           if(mission.dependsOn&&!project.missions.some(other=>other.id===mission.dependsOn&&other.status==='done'))throw new Error('Conclua a missão anterior antes desta etapa.');
-          mission.status='running';mission.startedAt=new Date().toISOString();this.projects.save(project);this.emit('project',project);
+          this.active.missionIds.push(mission.id);mission.status='running';mission.startedAt=new Date().toISOString();this.projects.save(project);this.emit('project',project);
           try{
             if(!agent.registered){
               const registration=await this.callTool(client,this.prepare('mcp:agent_spawn',{agentType:agent.role,agentId:agent.id,model:'sonnet'},directory),directory);
@@ -567,7 +569,7 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
           if(mission.status!=='done')break;
         }
       }finally{client.close();}
-      return {success:!project.missions.some(mission=>['error','unknown'].includes(mission.status)),stopped:this.queueStopped,project};
+      return {success:!project.missions.some(mission=>['error','unknown'].includes(mission.status)),stopped:this.queueStopped,project,missionIds:[...this.active.missionIds]};
     });
   }
   createProjectClient(directory){return new LocalMcpClient({nodeExecutable:this.runtime.nodeExecutable,launcher:join(this.repositoryRoot,'scripts/sandubah-mcp.cjs'),cwd:directory,env:localEnvironment(this.repositoryRoot,this.runtime.nodeExecutable,process.env,directory),timeoutMs:60000});}
@@ -575,6 +577,12 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
     const started=Date.now();
     if(this.active)throw new Error('Aguarde o worker atual.');
     if(typeof payload?.prompt!=='string'||!payload.prompt.trim()||payload.prompt.length>4000)throw new Error('Descreva o que construir em até 4.000 caracteres.');
+    const selection={...this.cloud.selection},requested=payload.selection;
+    if(selection.provider!=='codex')throw new Error('Selecione Codex explicitamente para construir nesta integração. Sua IA e seu projeto não foram trocados.');
+    if(!requested||typeof requested!=='object'||Array.isArray(requested))throw new Error('Confirme a seleção de IA, modelo e força na tela antes de construir.');
+    if(requested.provider!==selection.provider||requested.model!==selection.model||(requested.effort??null)!==(selection.effort??null))throw new Error('A seleção da IA mudou. Confira modelo e força antes de enviar novamente; nada foi preparado.');
+    const model=this.cloud.models('codex').find(item=>item.id===selection.model);
+    if(!model||selection.effort!=null&&!model.effortLevels.includes(selection.effort))throw new Error('Modelo executor ou força não disponível. Nada foi preparado.');
     const history=payload.history||[];if(!Array.isArray(history)||history.length>6||history.some(item=>!['user','assistant'].includes(item.role)||typeof item.content!=='string'||item.content.length>16000))throw new Error('Histórico inválido.');
     let project=payload.projectId?this.projects.get(payload.projectId):this.projects.create({name:payload.prompt.replace(/[\r\n]+/g,' ').slice(0,100),goal:payload.prompt});
     if(!payload.projectId&&this.knowledge?.state.briefs['planner:new'])this.knowledge.savePlannerOptions(project.id,this.knowledge.plannerOptions(''));
@@ -584,11 +592,11 @@ ${task.instructions}`,history:[],context,attachments:[],lessons:info}}))return {
     this.projects.write(join(this.projects.workspace(project.id),'PLANNING.md'),'# Conversa e pedido de implementação\n\n'+history.map(item=>`## ${item.role}\n${item.content}`).join('\n\n')+'\n\n## Pedido atual\n'+payload.prompt);
     const existing=project.missions.findLast(mission=>mission.status==='pending'&&mission.fromChat&&mission.buildPrompt===payload.prompt);
     if(!existing)project=this.projects.update(project.id,'mission',{engine:'codex',agentId:agent.id,title:'Construir: '+payload.prompt.slice(0,90),instructions:'Implemente de verdade o pedido abaixo dentro deste projeto. Leia PLANNING.md e os Markdown do harness. Crie e altere arquivos, execute testes locais seriais e entregue o resultado aqui. Não devolva passos para o usuário criar pastas ou rodar comandos. Para interfaces web, entregue index.html funcional e arquivos locais, sem CDN ou downloads, para a prévia lateral. Para outros tipos de projeto, implemente os arquivos e testes adequados. Preserve todos os arquivos existentes que não precisem mudar.\n\nPedido: '+payload.prompt});
-    const mission=existing||project.missions.at(-1);mission.fromChat=true;mission.buildPrompt=payload.prompt;if(this.cloud.selection.provider==='codex'){mission.model=this.cloud.selection.model;mission.effort=this.cloud.selection.effort;}this.projects.save(project);this.emit('project',project);this.emit('planner',{type:'project',projectId:project.id,name:project.name});
+    const mission=existing||project.missions.at(-1);mission.fromChat=true;mission.buildPrompt=payload.prompt;mission.model=selection.model;mission.effort=selection.effort??null;this.projects.save(project);this.emit('project',project);this.emit('planner',{type:'project',projectId:project.id,name:project.name});
     const result=await this.runProject({id:project.id,missionId:mission.id});project=this.projects.get(project.id);if(result.cancelled)return {...result,projectId:project.id};
     const completed=project.missions.find(item=>item.id===mission.id);let report,outcome;try{outcome=JSON.parse(completed.result);report=JSON.parse(outcome.finalMessage);}catch{}
     const usage=outcome?.usage?{inputTokens:outcome.usage.input_tokens,outputTokens:outcome.usage.output_tokens,cachedInputTokens:outcome.usage.cached_input_tokens,source:'Codex · uso reportado pelo executor'}:null;
-    return {projectId:project.id,success:completed.status==='done',answer:report?.summary||'A execução terminou com pontos para revisão. Confira as etapas e arquivos na lateral.',tests:report?.tests||[],provider:'codex',model:mission.model||'Codex executor',seconds:(Date.now()-started)/1000,usage};
+    return {projectId:project.id,missionIds:[mission.id],success:completed.status==='done',answer:report?.summary||'A execução terminou com pontos para revisão. Confira as etapas e arquivos na lateral.',tests:report?.tests||[],provider:'codex',model:mission.model||'Codex executor',seconds:(Date.now()-started)/1000,usage};
   }
   createCodexWorker(){
     const codexHome=join(this.repositoryRoot,'build/sandubah/gui/codex-profile');

@@ -3,6 +3,7 @@ import {createBrainMap} from './brain-3d.mjs';
 import {createBrainHub} from './brain-hub.mjs';
 import {missionDraft,executorChoices} from './harness-executors.mjs';
 import {createProjectTrack} from './project-track.mjs';
+import {createProjectClientLink} from './client-videos.mjs';
 import {createProjectHistory} from './project-history.mjs';
 import {layoutStore,panelControls} from './panels.mjs';
 
@@ -193,6 +194,7 @@ export function createWorld({api,catalog,notify,output,navigate}){
     const progress=node('div','quest-progress');progress.append(node('strong','',current.name),node('span','',`${completed} / ${current.missions.length} missões concluídas · 1 worker`));
     const meter=node('progress');meter.max=Math.max(1,current.missions.length);meter.value=completed;meter.setAttribute('aria-label','Missões concluídas');progress.append(meter,node('p','',current.goal));projectBody.append(progress);
     const projectId=current.id;
+    if(api.clientVideos)projectBody.append(createProjectClientLink({api,projectId,notify,onClients:()=>window.dispatchEvent(new CustomEvent('sandubah:open-clients')),onVideos:()=>window.dispatchEvent(new CustomEvent('sandubah:project-videos',{detail:{id:projectId}}))}));
     const track=createProjectTrack({api,projectId,run,notify,isBusy:()=>busy,onProjectChanged:async()=>{current=await api.project({action:'get',id:projectId});renderProject();},openPrompt:async path=>{navigate('brain');await openDocument(path,projectId);}});projectBody.append(track);
     const actions=node('div','world-toolbar');
     const play=button('▶ Revisar e executar fila',run(()=>executeQueue()),'button primary');play.id='run-queue';play.disabled=busy||!current.missions.some(mission=>mission.status==='pending');
@@ -321,6 +323,14 @@ export function createWorld({api,catalog,notify,output,navigate}){
     await openDocument(item.path,item.projectId);
   }
   async function openProject(id){await refreshProjects();current=await api.project({action:'get',id});projectSelect.value=id;remember();renderProject();navigate('harness');}
+  async function openResult(id,missionIds){
+    const project=await api.project({action:'get',id});
+    if(!Array.isArray(missionIds)||!missionIds.length)throw new Error('Este registro não identifica uma missão. Abra o projeto para consultar os resultados.');
+    const missions=missionIds.map(missionId=>project.missions.find(mission=>mission.id===missionId));
+    if(missions.some(mission=>!mission?.result))throw new Error('O resultado desta missão não está mais disponível.');
+    await openProject(id);
+    output(`${project.name} · resultado da execução`,missions.map(mission=>`## ${mission.title}\n${mission.engine==='codex'?workerResultText(mission.result,mission.status):mission.result}`).join('\n\n'));
+  }
   async function loadIndex(){if(!indexPromise)indexPromise=api.brain().then(result=>{documents=result;renderIndex();}).catch(error=>{indexPromise=null;throw error;});return indexPromise;}
   function renderIndex(){
     const query=normalized(brainSearch.value);const matches=documents.filter(item=>normalized(item.title+' '+item.path+' '+(item.sourceLabel||'')).includes(query));
@@ -380,7 +390,9 @@ export function createWorld({api,catalog,notify,output,navigate}){
   });
   run(async()=>{await refreshProjects();const saved=localStorage.getItem('sandubah-project');if(saved&&[...projectSelect.options].some(option=>option.value===saved)){current=await api.project({action:'get',id:saved});projectSelect.value=saved;}renderProject();})();
   return {
+    openStudy:()=>run(()=>brainHub.show('study'))(),
     continueProject:openProject,
+    openResult,
     show(next){if(view==='harness')rememberWorkerReading();view=next;harness.hidden=next!=='harness';brain.hidden=next!=='brain';projectsView.hidden=next!=='projects';brainMap.setVisible(next==='brain');if(next==='projects')run(()=>projectsHub.show())();if(next==='harness'){renderWorkerArea(undefined,false);if(current)window.dispatchEvent(new CustomEvent('sandubah:project-selected',{detail:{id:current.id}}));}if(next==='brain')run(async()=>{await brainHub.show();await loadIndex();renderIndex();if(!activeDocument)await openDocument(current?'HARNESS.md':'AGENTS.md',current?.id);})();},
     status(status){busy=status.busy;if(view==='harness')renderProject();},
   };

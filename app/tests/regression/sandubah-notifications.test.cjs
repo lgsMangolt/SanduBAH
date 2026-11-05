@@ -20,8 +20,26 @@ test('avisos persistem, não contam novamente e exibem todos os pendentes, não 
 test('histórico limita a trinta e rejeita dados persistidos inválidos',()=>{
   const source=fixture({hidden:true});for(let index=0;index<35;index++)source.notifier.done({});assert.equal(source.notifier.snapshot().items.length,30);const malformed=source.saved;malformed.items[0].view='execute';assert.equal(fixture({load:()=>malformed}).notifier.snapshot().items.length,0);
 });
-test('clicar no aviso só navega e marca como lido; falhas do Windows não perdem o aviso',()=>{
-  const current=fixture();current.notifier.done({});assert.equal(current.notifications[0].shown,true);current.notifications[0].handlers.click();assert.deepEqual(current.actions,['restore','show','focus']);assert.equal(current.notifier.snapshot().unreadCount,0);assert.equal(current.sent.at(-1).open,true);
+test('clique nativo só pede navegação; leitura aguarda confirmação da interface',()=>{
+  const current=fixture();current.notifier.done({});assert.equal(current.notifications[0].shown,true);current.notifications[0].handlers.click();assert.deepEqual(current.actions,['restore','show','focus']);assert.equal(current.notifier.snapshot().unreadCount,1);assert.equal(current.sent.at(-1).open,true);
   class BrokenNotification{static isSupported(){return true;}constructor(){throw new Error('OS offline');}}
   const fallback=fixture({Notification:BrokenNotification,persist:()=>{throw new Error('Disco indisponível');}});assert.doesNotThrow(()=>fallback.notifier.done({}));assert.equal(fallback.notifier.snapshot().unreadCount,1);assert.match(fallback.sent.find(item=>item.type==='state').warning,/salvar/);
+});
+
+test('destinos persistem por execução e metadados adulterados são recusados',()=>{
+  const {randomUUID}=require('node:crypto'),projectId=randomUUID(),missionIds=[randomUUID()];
+  const source=fixture({hidden:true});source.notifier.done({projectId,missionIds,kind:'execution',view:'harness'});missionIds.push(randomUUID());
+  const restored=fixture({load:()=>source.saved});assert.equal(restored.notifier.items[0].missionIds.length,1);assert.equal(restored.notifier.items[0].projectId,projectId);
+  const old=source.saved;delete old.items[0].missionIds;delete old.items[0].kind;assert.equal(fixture({load:()=>old}).notifier.items.length,1);
+  for(const metadata of [{kind:'execute'},{missionIds:['../../private']},{missionIds:'invalid'}]){const invalid=source.saved;Object.assign(invalid.items[0],metadata);assert.equal(fixture({load:()=>invalid}).notifier.items.length,0);assert.throws(()=>source.notifier.done(metadata));}
+});
+
+test('links distinguem teste, conversa, missão e histórico sem vínculo',async()=>{
+  const {resultActions}=await import('../../src/sandubah-desktop/result-links.mjs');const {randomUUID}=require('node:crypto');
+  const projectId=randomUUID(),missionIds=[randomUUID()];
+  assert.deepEqual(resultActions({kind:'test',projectId}),[]);assert.deepEqual(resultActions({title:'Teste SanduBAH'}),[]);assert.deepEqual(resultActions({label:'Fila do harness'}),[]);
+  assert.deepEqual(resultActions({projectId,view:'harness'}).map(action=>action.label),['Abrir projeto','Abrir arquivos']);
+  assert.deepEqual(resultActions({projectId,missionIds,view:'harness'}).map(action=>action.label),['Ver resultado','Abrir arquivos']);
+  assert.deepEqual(resultActions({kind:'planning',view:'planner',projectId:''}).map(action=>action.label),['Ver conversa']);
+  assert.deepEqual(resultActions({projectId:'../../private',missionIds}),[]);
 });

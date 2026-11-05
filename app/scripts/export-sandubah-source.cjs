@@ -17,17 +17,24 @@ function prepare(){
   const entries=[],terms=privateTerms(),hash=bytes=>createHash('sha256').update(bytes).digest('hex');assertLocalWriteTree(root,destination);fs.mkdirSync(destination,{recursive:true});
   function put(source,target='desktop/'+source){
     const filename=join(root,source),info=fs.lstatSync(filename);if(!info.isFile()||info.isSymbolicLink()||info.nlink!==1||!fs.realpathSync(filename).startsWith(fs.realpathSync(root)+sep))throw new Error('Fonte vinculada ou fora do workspace.');
-    let bytes=fs.readFileSync(filename);if(source.endsWith('.png'))bytes=cleanPng(bytes);else try{auditText(bytes.toString('utf8'),terms);}catch(error){throw new Error(`${error.message} Arquivo: ${source}`);}
+    let bytes=fs.readFileSync(filename);if(source.endsWith('.png'))bytes=cleanPng(bytes);else try{
+      const content=bytes.toString('utf8');
+      // This fixed interface label can coincide with the title of a local project.
+      const auditedContent=source==='src/sandubah-desktop/knowledge.cjs'
+        ? content.replace("roots.push({name:'Notas do "+"projeto · pasta de trabalho',path:resolve(this.root,'..')});",'')
+        : content;
+      auditText(auditedContent,terms);
+    }catch(error){throw new Error(`${error.message} Arquivo: ${source}`);}
     const output=join(destination,target);assertLocalWriteTree(root,output);fs.mkdirSync(dirname(output),{recursive:true});fs.writeFileSync(output,bytes);entries.push({path:target,bytes:bytes.length,sha256:hash(bytes)});
   }
   function walk(directory){for(const item of fs.readdirSync(join(root,directory),{withFileTypes:true})){if(item.isSymbolicLink()||item.name.startsWith('.')&&item.name!=='.nojekyll'&&item.name!=='.gitignore')throw new Error('Fonte oculta ou vinculada não revisada.');const filename=directory+'/'+item.name;if(item.isDirectory())walk(filename);else put(filename);}}
   for(const directory of ['src/sandubah-desktop','src/sandubah-distribution','src/sandubah-legal-skill','src/sandubah-public-preview','src/sandubah-journey-ci','src/sandubah-release-ci'])walk(directory);
-  for(const filename of [...scripts,'probe-sandubah-harness2.py','test-sandubah-tech-ui.cjs','test-sandubah-tech-live.cjs','test-sandubah-installer.cjs'])put('scripts/'+filename);
+  for(const filename of [...scripts,'probe-sandubah-harness2.py','test-sandubah-tech-ui.cjs','test-sandubah-tech-live.cjs','test-sandubah-installer.cjs','test-sandubah-gaucho-avatar-ui.cjs','test-sandubah-client-videos-ui.cjs','test-sandubah-planner-readiness-ui.cjs','test-sandubah-startup-ui.cjs'])put('scripts/'+filename);
   put('scripts/plan-commerce-mvp.cjs');
-  for(const filename of docs)put('docs/customization/'+filename,'desktop/docs/'+filename);
+  for(const filename of [...docs,'SANDUBAH-GAUCHINHOS.md','SANDUBAH-CLIENTES-VIDEOS.md','SANDUBAH-CONFIABILIDADE.md','SANDUBAH-INICIALIZACAO.md','SANDUBAH-AVISOS-RESULTADOS.md','SANDUBAH-CADERNOS-ESTUDO.md','SANDUBAH-FLUXO-GUIADO.md'])put('docs/customization/'+filename,'desktop/docs/'+filename);
   put('docs/customization/SANDUBAH-SOURCE.md','desktop/README.md');put('docs/customization/SANDUBAH-HANDOFF.md','desktop/CLAUDE.md');put('LICENSE','desktop/LICENSE');
   for(const item of fs.readdirSync(join(root,'tests/regression'),{withFileTypes:true}))if(item.isFile()&&/^(?:sandubah-.*\.test\.cjs|test_sandubah_.*\.py)$/.test(item.name))put('tests/regression/'+item.name);
-  for(const filename of ['sandubah-public-main.cjs','sandubah-mcp.cjs'])put('tests/regression/fixtures/'+filename);put('tests/sandubah-distribution.test.cjs');
+  for(const filename of ['sandubah-public-main.cjs','sandubah-mcp.cjs','sandubah-startup-main.cjs'])put('tests/regression/fixtures/'+filename);put('tests/sandubah-distribution.test.cjs');
   const attributesPath=join(destination,'desktop/.gitattributes'),attributes=Buffer.from('* -text\n');assertLocalWriteTree(root,attributesPath);fs.writeFileSync(attributesPath,attributes);entries.push({path:'desktop/.gitattributes',bytes:attributes.length,sha256:hash(attributes)});
   entries.sort((first,second)=>first.path.localeCompare(second.path));const manifest={schema:1,createdAt:new Date().toISOString(),kind:'source-overlay',files:entries,privateDataIncluded:false,installerRebuilt:false};
   const manifestPath=join(destination,'desktop/SOURCE-MANIFEST.json');assertLocalWriteTree(root,manifestPath);fs.writeFileSync(manifestPath,JSON.stringify(manifest,null,2)+'\n');
