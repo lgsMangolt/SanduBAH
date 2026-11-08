@@ -16,6 +16,8 @@ const deadline=setTimeout(()=>{log('Hard deadline reached; stopping only the tes
 async function run(){
   const environment={PATH:join(process.env.SystemRoot,'System32'),NODE_PATH:'',NODE_OPTIONS:''};for(const name of ['SystemRoot','WINDIR','COMSPEC','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])environment[name]=process.env[name];environment.HOME=environment.USERPROFILE;
   const home=join(process.env.RUNNER_TEMP,'sandubah-empty-home');for(const directory of ['Documents','AppData/Roaming','AppData/Local'])fs.mkdirSync(join(home,directory),{recursive:true});environment.USERPROFILE=home;environment.HOME=home;environment.APPDATA=join(home,'AppData/Roaming');
+  const updatesDirectory=join(root,'build/sandubah/gui/updates');
+  const updateFilesBefore=fs.existsSync(updatesDirectory)?fs.readdirSync(updatesDirectory).sort().map(name=>({name,sha256:digest(fs.readFileSync(join(updatesDirectory,name)))})):[];
   log(`Starting the installed executable (${mode}).`);
   application=await electron.launch({executablePath:join(appDirectory,'SanduBAH.exe'),args:['--disable-gpu'],cwd:appDirectory,env:environment,timeout:120000});application.process().stderr.on('data',bytes=>process.stderr.write(bytes));
   await application.evaluate(({dialog})=>{const original=dialog.showErrorBox;dialog.showErrorBox=(title,content)=>{process.stderr.write(`Application startup error: ${title}: ${content}\n`);return original.call(dialog,title,content);};});
@@ -42,7 +44,7 @@ async function run(){
   const publicConfig=JSON.parse(fs.readFileSync(join(resources,'update-public.json'),'utf8'));assert.equal(digest(Buffer.from(publicConfig.publicKey)),'91ab36c79db049506162973c12bbd41468e65d49a335d8dd7e9e4f65870c05fb');const downloads=process.env.SANDUBAH_VM_DOWNLOAD_DIRECTORY;const manifestBytes=fs.readFileSync(join(downloads,'SanduBAH-update.json')),manifest=JSON.parse(manifestBytes);assert.equal(verify(null,manifestBytes,publicConfig.publicKey,fs.readFileSync(join(downloads,'SanduBAH-update.sig'))),true);assert.equal(manifest.installer.sha256,process.env.SANDUBAH_EXPECTED_SHA256);checks.push('pinned-Ed25519-update-signature');
   let update;const updateDeadline=Date.now()+120000;
   do{update=await page.evaluate(()=>window.sandubah.updatesStatus());if(!['idle','checking'].includes(update.phase))break;await new Promise(resolve=>setTimeout(resolve,500));}while(Date.now()<updateDeadline);
-  assert.ok(!['idle','checking'].includes(update.phase),'Startup update check did not finish.');assert.ok(update.checkedAt);assert.equal(fs.existsSync(join(root,'build/sandubah/gui/updates')),false);checks.push('automatic-public-check-without-download-or-install');
+  assert.ok(!['idle','checking'].includes(update.phase),'Startup update check did not finish.');assert.ok(update.checkedAt);const updateFilesAfter=fs.existsSync(updatesDirectory)?fs.readdirSync(updatesDirectory).sort().map(name=>({name,sha256:digest(fs.readFileSync(join(updatesDirectory,name)))})):[];assert.deepEqual(updateFilesAfter,updateFilesBefore);checks.push('automatic-public-check-without-download-or-install');
   const notes=page.locator('#whats-new-dialog');if(await notes.isVisible())await notes.getByRole('button',{name:'Entendi',exact:true}).click();
   assert.equal(await page.locator('body').getAttribute('data-current-view'),'home');
   assert.equal(await page.locator('[data-start-action]').count(),3);
