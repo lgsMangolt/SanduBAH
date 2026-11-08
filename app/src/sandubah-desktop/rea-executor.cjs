@@ -56,7 +56,7 @@ function loadManifest(filename,expected){
 }
 function configuration({workspace,runDirectory,rea,runtime}){
   const manifest=loadManifest(rea.manifest,rea.sha256);
-  if(realpathSync(workspace)!==manifest.workspace||realpathSync(runDirectory)!==manifest.runDirectory)throw new Error('REA pertence a outra execução.');
+  if(realpathSync.native(workspace)!==realpathSync.native(manifest.workspace)||realpathSync.native(runDirectory)!==realpathSync.native(manifest.runDirectory))throw new Error('REA pertence a outra execução.');
   return [`mcp_servers.sandubah_rea.command=${JSON.stringify(runtime.nodeExecutable)}`,`mcp_servers.sandubah_rea.args=${JSON.stringify([join(__dirname,'rea-broker.cjs'),rea.manifest,rea.sha256])}`,'mcp_servers.sandubah_rea.enabled_tools=["analyze_javascript_application"]','mcp_servers.sandubah_rea.startup_timeout_sec=30','mcp_servers.sandubah_rea.tool_timeout_sec=90'];
 }
 function executeAnalysis(manifest,invoke=spawnSync){

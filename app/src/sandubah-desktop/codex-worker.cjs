@@ -5,6 +5,7 @@ const { createHash } = require('node:crypto');
 const { existsSync, readFileSync, lstatSync, realpathSync } = require('node:fs');
 const { join, dirname, delimiter, resolve, relative, isAbsolute } = require('node:path');
 const {configuration:reaConfiguration}=require('./rea-executor.cjs');
+const {configuration:contextConfiguration}=require('./agent-context.cjs');
 const hashFile = filename => existsSync(filename) ? createHash('sha256').update(readFileSync(filename)).digest('hex') : null;
 
 function codexSettings(environment=process.env) {
@@ -18,20 +19,29 @@ function codexSettings(environment=process.env) {
   return {home,configPath,configHash:hashFile(configPath),model,effort};
 }
 
-function workerArguments({workspace,outputPath,settings,sandbox='workspace-write',rea,runtime}) {
+function workerArguments({workspace,outputPath,settings,sandbox='workspace-write',rea,context,runtime}) {
   if(!['workspace-write','read-only'].includes(sandbox))throw new Error('Sandbox inválido.');
   const args=['--no-daemon','-a','never','exec','--json','--color','never','--ephemeral','--ignore-user-config','--skip-git-repo-check','--sandbox',sandbox,'-C',workspace,'--output-last-message',outputPath,'--output-schema',join(dirname(outputPath),'result-schema.json')];
   for(const feature of ['multi_agent','multi_agent_v2','plugins','hooks','apps','browser_use','computer_use','skill_mcp_dependency_install'])args.push('--disable',feature);
-  for(const config of ['windows.sandbox="unelevated"','project_root_markers=[]','sandbox_workspace_write.network_access=false','web_search="disabled"','features.skip_host_skill_discovery=true'])args.push('-c',config);
+  for(const config of ['windows.sandbox="unelevated"','project_root_markers=[]','sandbox_workspace_write.network_access=false','sandbox_workspace_write.exclude_tmpdir_env_var=true','sandbox_workspace_write.exclude_slash_tmp=true','web_search="disabled"','features.skip_host_skill_discovery=true'])args.push('-c',config);
   if(settings.model)args.push('-m',settings.model);
   if(settings.effort)args.push('-c',`model_reasoning_effort=${JSON.stringify(settings.effort)}`);
   if(rea)for(const config of reaConfiguration({workspace,runDirectory:dirname(outputPath),rea,runtime}))args.push('-c',config);
+  if(context)for(const config of contextConfiguration({workspace,runDirectory:dirname(outputPath),context,runtime}))args.push('-c',config);
   args.push('-');return args;
 }
 
 function workerEnvironment(runtime,settings,environment=process.env) {
   const result={...environment,CODEX_HOME:settings.executionHome || settings.home,HOME:settings.executionHome || settings.home,USERPROFILE:settings.executionHome || settings.home,NODE_OPTIONS:'',NODE_PATH:'',PATH:[dirname(runtime.nodeExecutable),environment.PATH || ''].join(delimiter)};
   for(const name of ['ELECTRON_RUN_AS_NODE','CODEX_THREAD_ID','CODEX_INTERNAL_ORIGINATOR_OVERRIDE','OPENAI_BASE_URL','OPENAI_API_BASE','OPENAI_API_KEY','CODEX_API_KEY'])delete result[name];
+  // A child CLI has its own sandbox and cannot reuse the desktop core's package identity.
+  for(const name of ['CODEX_WINDOWS_REGISTERED_CORE','CODEX_WINDOWS_SANDBOX_PACKAGE_FAMILY','CODEX_APP_TOOLS_PIPE_PATH'])delete result[name];
+  // The explicit workspace/read-only sandbox is narrower than the parent's full-access profile.
+  if(result.CODEX_PERMISSION_PROFILE===':danger-full-access')delete result.CODEX_PERMISSION_PROFILE;
+  // The Windows sandbox compares path spellings. Expand 8.3 aliases in its roots.
+  if(process.platform==='win32')for(const key of ['CODEX_HOME','HOME','USERPROFILE','TEMP','TMP','TMPDIR']){
+    if(result[key]&&existsSync(result[key]))result[key]=realpathSync.native(result[key]);
+  }
   for(const name of Object.keys(result))if(/^(?:https?_proxy|all_proxy|no_proxy|anthropic_.*)$/i.test(name))delete result[name];
   return result;
 }
@@ -46,17 +56,19 @@ class CodexWorker {
     });
   }
   cancel(){this.cancelled=true;this.killProcess(this.child);}
-  async run({workspace,runDirectory,prompt,images=[],onEvent=()=>{},settings=codexSettings(),sandbox='workspace-write',rea}) {
+  async run({workspace,runDirectory,prompt,images=[],onEvent=()=>{},settings=codexSettings(),sandbox='workspace-write',rea,context}) {
     if(this.child)throw new Error('O worker Codex já está em execução.');
     if(!this.codexHome||this.codexHome.toLowerCase()===settings.home.toLowerCase())throw new Error('O executor exige perfil privado, separado do Codex global.');
     if(!existsSync(this.runtime.codexExecutable))throw new Error('Codex local não encontrado. Atualize o runtime local, sem instalar pacotes da rede.');
     this.cancelled=false;
-    const args=workerArguments({workspace,outputPath:join(runDirectory,'last-message.txt'),settings,sandbox,rea,runtime:this.runtime});
+    const sandboxWorkspace=realpathSync.native(workspace);
+    const sandboxRunDirectory=realpathSync.native(runDirectory);
+    const args=workerArguments({workspace:sandboxWorkspace,outputPath:join(sandboxRunDirectory,'last-message.txt'),settings,sandbox,rea,context,runtime:this.runtime});
     if(!Array.isArray(images)||images.length>16)throw new Error('Use até 16 imagens por execução.');
     for(const image of images){const filename=resolve(image),inside=relative(realpathSync(workspace),realpathSync(filename)),info=lstatSync(filename);if(inside.startsWith('..')||isAbsolute(inside)||!info.isFile()||info.isSymbolicLink()||info.nlink>1||info.size>10*1024*1024)throw new Error('Imagem fora do workspace privado.');args.splice(args.length-1,0,'--image',filename);}
     return new Promise((resolvePromise,rejectPromise)=>{
       let buffer='',completed=false,failure='',timedOut=false,threadId=null,finalMessage='',stderr='',eventCount=0,usage=null,protocolFailure=false;
-      const child=this.spawnProcess(this.runtime.codexExecutable,args,{cwd:workspace,env:workerEnvironment(this.runtime,{...settings,executionHome:this.codexHome}),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']});
+      const child=this.spawnProcess(this.runtime.codexExecutable,args,{cwd:sandboxWorkspace,env:workerEnvironment(this.runtime,{...settings,executionHome:this.codexHome}),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']});
       this.child=child;
       const timer=setTimeout(()=>{timedOut=true;this.killProcess(child);},this.timeoutMs);
       const receive=line=>{
@@ -84,7 +96,8 @@ class CodexWorker {
         const success=!interrupted&&!failure&&completed&&exitCode===0&&configPreserved&&validReport&&report.status==='completed';
         resolvePromise({success:Boolean(success),interrupted,cancelled:this.cancelled,timedOut,exitCode,threadId,usage,configPreserved,message:!configPreserved?'A configuração mudou durante a execução. A fila foi interrompida sem restaurá-la.':failure||(!completed?'O Codex não confirmou a conclusão do turno.':!validReport?'Relatório final inválido. Revise os arquivos.':report.status==='blocked'?'O executor relatou uma limitação.':null),finalMessage,diagnostic:success?'':stderr});
       });
-      child.stdin.end(prompt);
+      const canonicalNotice=workspace===sandboxWorkspace?'':`\nWorkspace canônico para comandos e arquivos: ${sandboxWorkspace}\nUse esse caminho completo como workdir; ele identifica o mesmo workspace aprovado.\n`;
+      child.stdin.end(prompt+canonicalNotice);
     });
   }
 }

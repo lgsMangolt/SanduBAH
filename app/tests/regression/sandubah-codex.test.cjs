@@ -6,7 +6,8 @@ const {PassThrough}=require('node:stream');
 const {mkdtempSync,writeFileSync,readFileSync,rmSync,realpathSync}=require('node:fs');
 const {join,resolve,relative}=require('node:path');
 const {CodexWorker,codexSettings,workerArguments,workerEnvironment,hashFile}=require('../../src/sandubah-desktop/codex-worker.cjs');
-const runtime=require('../../build/sandubah/gui/runtime.json');
+// All process launches in this suite are injected fakes.
+const runtime={nodeExecutable:process.execPath,codexExecutable:process.execPath};
 const root=resolve(__dirname,'../..');
 const temp=mkdtempSync(join(root,'build/sandubah/gui/tmp/codex-'));
 test.after(()=>{assert.ok(!relative(realpathSync(join(root,'build/sandubah/gui/tmp')),realpathSync(temp)).startsWith('..'));rmSync(temp,{recursive:true,force:true});});
@@ -34,7 +35,7 @@ test('provedor customizado falha fechado, sem reescrever configuração',()=>{
 test('stdin fecha, cwd correto e sucesso exige turno e relatório',async()=>{
   const fixture=fakeWorker();const profile=settings();let events=0;
   const result=await fixture.worker.run({workspace:temp,runDirectory:temp,prompt:'Contexto português\nsem cópia manual',settings:profile,onEvent:()=>events++});
-  assert.equal(result.success,true);assert.equal(result.threadId,'fixture-thread');assert.equal(events,3);assert.match(fixture.getPrompt(),/português/);assert.equal(fixture.getInvocation().options.cwd,temp);assert.equal(fixture.getInvocation().options.shell,false);assert.equal(hashFile(profile.configPath),profile.configHash);
+  assert.equal(result.success,true);assert.equal(result.threadId,'fixture-thread');assert.equal(events,3);assert.match(fixture.getPrompt(),/português/);assert.equal(fixture.getInvocation().options.cwd,realpathSync.native(temp));assert.equal(fixture.getInvocation().options.shell,false);assert.equal(hashFile(profile.configPath),profile.configHash);
 });
 
 test('referências visuais do executor precisam estar no workspace privado',async()=>{

@@ -105,6 +105,8 @@ Eu propus as funcionalidades, defini como elas deveriam se comportar, acompanhei
 - Novo projeto com planejamento guiado por IA
 - Meus projetos, com busca e continuidade
 - Cérebro: base de conhecimento em Markdown
+- Contexto estruturado por missão no executor Codex, com fontes e hashes, revisão antes da execução e leitura seletiva via MCP.
+- Sandbox Windows com caminhos nativos, rede bloqueada e escrita limitada ao workspace.
 - Etapas do produto e checklist de MVP
 - Conexões com Codex e Claude
 

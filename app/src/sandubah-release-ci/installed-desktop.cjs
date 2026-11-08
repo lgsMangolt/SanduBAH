@@ -23,6 +23,22 @@ async function run(){
   await page.waitForFunction(()=>['true','error'].includes(document.body.dataset.ready),null,{timeout:120000});assert.equal(await page.locator('body').getAttribute('data-ready'),'true',await page.locator('#load-error').textContent());
   const initial=await page.evaluate(()=>window.sandubah.initialize());assert.equal(initial.status.connected,true,'Bundled stdio MCP must actually connect.');assert.equal(initial.protections.workerLimit,1);assert.equal(initial.updateCheckOnOpen,true);assert.equal(fs.realpathSync(initial.repositoryRoot),fs.realpathSync(root));checks.push('installed-app-opened','real-bundled-stdio-MCP','one-worker','normal-startup-update-check-enabled');
   const runtime=JSON.parse(fs.readFileSync(join(root,'build/sandubah/gui/runtime.json'),'utf8'));assert.equal(runtime.distribution.installed,true);assert.equal(runtime.codexExecutable,'');assert.equal(fs.realpathSync(runtime.nodeExecutable),fs.realpathSync(join(resources,'node/node.exe')));assert.equal(initial.catalog.entries.every(entry=>['mcp','cli'].includes(entry.kind)),true);checks.push('no-external-node-or-original-checkout','no-bundled-user-account');
+  const expectedVersion=process.env.SANDUBAH_EXPECTED_INSTALLED_VERSION||'0.3.1';
+  assert.equal(runtime.distribution.version,expectedVersion);
+  if(expectedVersion==='0.3.1'){
+    const contextApi=require(join(root,'src/sandubah-desktop/agent-context.cjs'));
+    const base=join(root,'build/sandubah/gui/tmp/vm-context-smoke'),workspace=join(base,'workspace');
+    fs.mkdirSync(workspace,{recursive:true});
+    const snapshot={schemaVersion:1,project:{id:'11111111-1111-4111-8111-111111111111',name:'VM fictional context',goal:'Check installed context broker'},mission:{id:'22222222-2222-4222-8222-222222222222',title:'Read selected reference',instructions:'Read the fictional reference only'},agent:{id:'33333333-3333-4333-8333-333333333333',name:'VM agent',role:'tester'},references:[{source:'docs/demo.md',sha256:contextApi.hash('fictional-rule'),content:'fictional-rule',omittedCharacters:0}]};
+    const filename=join(base,'mission-context.json'),bytes=JSON.stringify(snapshot);fs.writeFileSync(filename,bytes);
+    const configs=contextApi.configuration({workspace:fs.realpathSync.native(workspace),runDirectory:fs.realpathSync.native(base),context:{filename,workspace:fs.realpathSync(workspace),sha256:contextApi.hash(bytes)},runtime});
+    const args=JSON.parse(configs.find(value=>value.startsWith('mcp_servers.sandubah_context.args=')).slice('mcp_servers.sandubah_context.args='.length));
+    const messages=[{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-11-25'}},{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'read_mission_context',arguments:{section:'references'}}}];
+    const result=require('node:child_process').spawnSync(runtime.nodeExecutable,args,{input:messages.map(value=>JSON.stringify(value)).join('\n')+'\n',encoding:'utf8',windowsHide:true,timeout:20000});
+    assert.equal(result.status,0,result.stderr);
+    assert.equal(JSON.parse(result.stdout.trim().split('\n').at(-1)).result.structuredContent.data[0].content,'fictional-rule');
+    checks.push('installed-scoped-context-MCP-real-stdio','installed-version-0.3.1');
+  }
   const publicConfig=JSON.parse(fs.readFileSync(join(resources,'update-public.json'),'utf8'));assert.equal(digest(Buffer.from(publicConfig.publicKey)),'91ab36c79db049506162973c12bbd41468e65d49a335d8dd7e9e4f65870c05fb');const downloads=process.env.SANDUBAH_VM_DOWNLOAD_DIRECTORY;const manifestBytes=fs.readFileSync(join(downloads,'SanduBAH-update.json')),manifest=JSON.parse(manifestBytes);assert.equal(verify(null,manifestBytes,publicConfig.publicKey,fs.readFileSync(join(downloads,'SanduBAH-update.sig'))),true);assert.equal(manifest.installer.sha256,process.env.SANDUBAH_EXPECTED_SHA256);checks.push('pinned-Ed25519-update-signature');
   let update;const updateDeadline=Date.now()+120000;
   do{update=await page.evaluate(()=>window.sandubah.updatesStatus());if(!['idle','checking'].includes(update.phase))break;await new Promise(resolve=>setTimeout(resolve,500));}while(Date.now()<updateDeadline);

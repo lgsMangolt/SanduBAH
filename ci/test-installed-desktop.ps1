@@ -14,7 +14,7 @@ $downloadDirectory = Join-Path $env:RUNNER_TEMP 'sandubah-release-download'
 $reportPath = Join-Path $env:RUNNER_TEMP ("SanduBAH-windows-vm-validation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.json")
 $stage = 'preflight'
 $checks = [Collections.Generic.List[string]]::new()
-$report = [ordered]@{schema=1;passed=$false;installerSha256=$ExpectedSha256;version='0.3.0';workerLimit=1;modelCalls=0;environment='Fresh GitHub-hosted Windows Server 2025 VM; development tools preinstalled, application PATH isolated';runId=$env:GITHUB_RUN_ID;runAttempt=$env:GITHUB_RUN_ATTEMPT;commit=$env:GITHUB_SHA;workflowUrl="https://github.com/$repository/actions/runs/$env:GITHUB_RUN_ID";checks=@();privateProjectsIncluded=$false;personalCredentialsIncluded=$false;windowsCodeSigned=$false}
+$report = [ordered]@{schema=1;passed=$false;installerSha256=$ExpectedSha256;version='0.3.1';workerLimit=1;modelCalls=0;environment='Fresh GitHub-hosted Windows Server 2025 VM; development tools preinstalled, application PATH isolated';runId=$env:GITHUB_RUN_ID;runAttempt=$env:GITHUB_RUN_ATTEMPT;commit=$env:GITHUB_SHA;workflowUrl="https://github.com/$repository/actions/runs/$env:GITHUB_RUN_ID";checks=@();privateProjectsIncluded=$false;personalCredentialsIncluded=$false;windowsCodeSigned=$false}
 function Invoke-GitHub([string[]]$Arguments) {
     $output = & gh @Arguments
     if ($LASTEXITCODE -ne 0) { throw 'GitHub release transfer failed.' }
@@ -64,9 +64,10 @@ function Invoke-Uninstaller {
     $checks.Add('real-NSIS-uninstall-files-registration-and-shortcuts-removed')
     Assert-Canaries
 }
-function Invoke-AppCheck([string]$Mode) {
+function Invoke-AppCheck([string]$Mode, [string]$Version='0.3.1') {
     Write-Host "Checking the installed application: $Mode."
     $savedToken = $env:GH_TOKEN
+    $env:SANDUBAH_EXPECTED_INSTALLED_VERSION = $Version
     $outputPath = Join-Path $env:RUNNER_TEMP ("sandubah-app-$Mode-" + [Guid]::NewGuid().ToString('N') + '.out')
     $errorPath = $outputPath + '.err'
     try { Remove-Item Env:/GH_TOKEN; $process = Start-Process -FilePath (Get-Command node).Source -ArgumentList @(('"' + (Join-Path $PSScriptRoot 'installed-desktop.cjs') + '"'),$Mode) -WindowStyle Hidden -PassThru -RedirectStandardOutput $outputPath -RedirectStandardError $errorPath } finally { $env:GH_TOKEN = $savedToken }
@@ -83,15 +84,15 @@ try {
     if ((Test-Path -LiteralPath $appDirectory) -or (Test-Path -LiteralPath $dataDirectory) -or $null -ne (Get-ProductEntry)) { throw 'VM already contains SanduBAH data; refusing to replace it.' }
     $checks.Add('fresh-VM-no-existing-application-or-project-data')
     $release = (Invoke-GitHub -Arguments @('api',"repos/$repository/releases/$ReleaseId")) | ConvertFrom-Json
-    if (-not $release.draft -or $release.tag_name -ne 'v0.3.0') { throw 'Only the expected draft release can be validated.' }
+    if (-not $release.draft -or $release.tag_name -ne 'v0.3.1') { throw 'Only the expected draft release can be validated.' }
     $stage = 'download-and-hash'
     Write-Host 'Downloading and verifying the audited draft assets.'
     New-Item -ItemType Directory -Path $downloadDirectory | Out-Null
-    Invoke-GitHub -Arguments @('release','download','v0.3.0','--repo',$repository,'--pattern','SanduBAH-Setup-0.3.0-x64.exe','--pattern','SanduBAH-update.json','--pattern','SanduBAH-update.sig','--pattern','SanduBAH-test-controller.zip','--dir',$downloadDirectory) | Out-Null
+    Invoke-GitHub -Arguments @('release','download','v0.3.1','--repo',$repository,'--pattern','SanduBAH-Setup-0.3.1-x64.exe','--pattern','SanduBAH-update.json','--pattern','SanduBAH-update.sig','--pattern','SanduBAH-test-controller.zip','--dir',$downloadDirectory) | Out-Null
     $controller = Join-Path $downloadDirectory 'SanduBAH-test-controller.zip'
     if ($env:SANDUBAH_TEST_TOOLS_SHA256 -notmatch '^[a-f0-9]{64}$' -or (Get-FileHash -LiteralPath $controller -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:SANDUBAH_TEST_TOOLS_SHA256) { throw 'Offline test controller failed its audit hash.' }
     Expand-Archive -LiteralPath $controller -DestinationPath $env:SANDUBAH_TEST_TOOLS
-    $script:installer = Join-Path $downloadDirectory 'SanduBAH-Setup-0.3.0-x64.exe'
+    $script:installer = Join-Path $downloadDirectory 'SanduBAH-Setup-0.3.1-x64.exe'
     if ((Get-FileHash -LiteralPath $script:installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ExpectedSha256) { throw 'Downloaded installer hash does not match the audited artifact.' }
     $env:SANDUBAH_INSTALLED_DIRECTORY = $appDirectory
     $env:SANDUBAH_VM_DOWNLOAD_DIRECTORY = $downloadDirectory
@@ -112,8 +113,39 @@ try {
     Invoke-AppCheck 'resume'
     $stage = 'final-uninstall'
     Invoke-Uninstaller
+    $stage = 'prepare-previous-version-upgrade'
+    # This is exclusively the fictional data created by the first lifecycle in this fresh VM.
+    Assert-Canaries
+    if ([IO.Path]::GetFullPath($dataDirectory) -ne [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA 'SanduBAH/workspace'))) { throw 'Unexpected fictional workspace cleanup target.' }
+    Remove-Item -LiteralPath $dataDirectory -Recurse -Force
+    Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'sandubah-lifecycle-fixture.json')
+    $previousDirectory = Join-Path $env:RUNNER_TEMP 'sandubah-previous-release'
+    New-Item -ItemType Directory -Path $previousDirectory | Out-Null
+    Invoke-GitHub -Arguments @('release','download','v0.3.0','--repo',$repository,'--pattern','SanduBAH-Setup-0.3.0-x64.exe','--dir',$previousDirectory) | Out-Null
+    $previousInstaller = Join-Path $previousDirectory 'SanduBAH-Setup-0.3.0-x64.exe'
+    if ((Get-FileHash -LiteralPath $previousInstaller -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'c218b365320cef4567611e6fc98518706d1da8448a68b97f792469c20703d46b') { throw 'Previous public installer hash mismatch.' }
+    $newInstaller = $script:installer
+    $script:installer = $previousInstaller
+    Invoke-Installer
+    Invoke-AppCheck 'fresh' '0.3.0'
+    $stage = 'signed-in-place-update'
+    $savedToken = $env:GH_TOKEN
+    try {
+        Remove-Item Env:/GH_TOKEN
+        $upgradeOutput = & node (Join-Path $PSScriptRoot 'upgrade-desktop.cjs')
+        $upgradeExit = $LASTEXITCODE
+    } finally { $env:GH_TOKEN = $savedToken }
+    if ($upgradeExit -ne 0) { throw 'Signed updater lifecycle failed.' }
+    $upgradeResult = ($upgradeOutput | Select-Object -Last 1) | ConvertFrom-Json
+    if (-not $upgradeResult.passed) { throw 'Invalid upgrade receipt.' }
+    foreach ($check in $upgradeResult.checks) { $checks.Add($check) }
+    $script:installer = $newInstaller
+    Assert-Canaries
+    Invoke-AppCheck 'resume' '0.3.1'
+    $stage = 'upgrade-final-uninstall'
+    Invoke-Uninstaller
     $report.passed = $true
-    $report.lifecycle = @('install','normal-launch','same-version-reinstall','uninstall','install-again','restore-fictional-project','final-uninstall')
+    $report.lifecycle = @('install','normal-launch','same-version-reinstall','uninstall','install-again','restore-fictional-project','final-uninstall','install-previous-0.3.0','signed-update-to-0.3.1','restore-fictional-project-after-update','upgrade-final-uninstall')
 } catch {
     $report.failedStage = $stage
     $report.failure = 'Validation did not complete; inspect the workflow log. No release is authorized by this report.'
@@ -123,7 +155,7 @@ try {
     $report.checkedAt = [DateTime]::UtcNow.ToString('o')
     $report.checks = @($checks.ToArray())
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $reportPath -Encoding utf8NoBOM
-    Invoke-GitHub -Arguments @('release','upload','v0.3.0',$reportPath,'--repo',$repository) | Out-Null
+    Invoke-GitHub -Arguments @('release','upload','v0.3.1',$reportPath,'--repo',$repository) | Out-Null
 }
 if (-not $report.passed) { throw 'VM lifecycle validation failed; keep the release as a draft.' }
 Write-Host 'VM lifecycle validation passed. The release remains a draft until separately published.'

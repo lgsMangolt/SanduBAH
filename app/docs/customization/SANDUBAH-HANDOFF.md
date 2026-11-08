@@ -2,6 +2,41 @@
 
 ## Regras de trabalho
 
+Correção posterior de **08/11/2026**: normalização nativa de caminhos Windows
+no worker e nos validadores de contexto/REA corrigiu o bloqueio do sandbox.
+Sonda workspaceWrite permitiu escrita interna e negou externa. Temporários
+externos excluídos, rede bloqueada, sem afrouxar sandbox ou alterar perfil
+global. O runtime local com caminho Codex ausente foi apontado à CLI instalada.
+Nova chamada Luna low concluiu o exemplo fictício: MCP real, código e 3/3 testes
+verificados independentemente; X-Tudo base 1/2 → candidato 2/2, review e sem
+adoção automática. 141/141 testes de regressão seriais. Uso desta rodada:
+207.256 entrada (182.400 em cache) e 2.868 saída. Veja a seção final de
+SANDUBAH-MD2.md. Fontes locais; a Release pública continua 0.3.0.
+
+Ensaio real de contexto MCP em **08/11/2026**: duas chamadas sequenciais Luna low,
+um worker, dados fictícios e revisão/cancelamento exercitados em diálogos reais
+com cliques automatizados dentro da autorização. O MCP retornou references com
+hash nas duas chamadas. A CLI 0.166.0-alpha.6 bloqueou exec_command pelo sandbox
+Windows; nenhum candidato foi construído. X-Tudo registrou reject/adopted=false.
+Uso total do provedor: 167.917 entrada, 128.384 dessa entrada em cache, 861 saída.
+Identidade desktop herdada é removida do ambiente da CLI filha; perfis restritivos
+continuam preservados. Uma sonda sandbox funcionou, mas o erro do comando no turno
+persistiu. Não enfraquecer sandbox para concluir o ensaio. Veja SANDUBAH-MD2.md.
+
+Rodada local de **08/11/2026**: integração md2 no executor Codex, com AGENTS.md
+de desenvolvimento, instruções carregadas explicitamente, contrato de missão
+versão 1 e MCP stdio de leitura por seção. Contrato exibido na confirmação,
+fontes verificadas novamente antes da preparação e snapshot vinculado ao hash.
+Projetos anteriores recebem o contexto na próxima execução. Comparação
+determinística no X-Tudo mantém a proposta para revisão. Veja SANDUBAH-MD2.md.
+A Release 0.3.0 foi publicada em 05/11; esta integração está apenas nos fontes
+locais. Restrições de um worker e ações protegidas preservadas.
+Validação final desta rodada: 126/126 testes seriais das áreas afetadas e
+ensaio Electron de revisão/cancelamento aprovados. MCP de contexto executado
+realmente por stdio, worker Codex simulado, zero chamadas novas a modelos.
+Comparação determinística do mecanismo: base 1/3, candidato 3/3, zero regressões,
+proposta ainda em revisão e sem promoção automática de aprendizado.
+
 Rodada mais recente de **26/10/2026**: fluxo guiado local com três entradas (Criar, Estudar, Continuar), próxima ação no projeto e configurações avançadas recolhidas. Veja `SANDUBAH-FLUXO-GUIADO.md`. Estudar não cria projeto; execução/cancelamento continuam confirmados; resultados permanecem na conversa e as fases vêm do checklist real. Nenhuma chamada nova a modelo, publicação ou atualização do instalador. O caminho Codex antigo no runtime local continua pendente; existe uma versão instalada em outra pasta, sem alteração de autenticação/modelos.
 
 Validação do fluxo guiado: lote amplo **311/323** (11 falhas Codex já descritas e uma EPERM de fixture Tech); reteste focado **25/25**, incluindo Tech, e dois ensaios Electron finais aprovados. Contas, MCP, worker e diálogos dos ensaios são fictícios; nenhuma execução autenticada nova. README público com alteração do usuário preservado.
