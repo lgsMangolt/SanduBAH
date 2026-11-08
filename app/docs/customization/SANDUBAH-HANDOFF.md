@@ -1,5 +1,24 @@
 # Continuidade do SanduBAH
 
+## Publicação 0.3.1 — 08/11/2026
+
+A versão 0.3.1 foi publicada: https://github.com/lgsMangolt/SanduBAH/releases/tag/v0.3.1.
+Inclui contexto de missão JSON, MCP de leitura por seção e normalização nativa
+Windows no sandbox. Suíte ampla serial: 333/333, com as três exclusões históricas
+(worker-panel, launcher e source-export). Instalador extraído, abertura independente
+e auditoria de privacidade aprovados; nenhum projeto, chave ou log pessoal incluído.
+
+VM nova Windows Server 2025: instalação, abertura com MCP real, reinstalação,
+desinstalação, restauração de projeto fictício e atualização 0.3.0 → 0.3.1 passaram.
+Cancelamento e aceite de download e instalação foram testados separadamente.
+Execução: https://github.com/lgsMangolt/SanduBAH/actions/runs/42527795924.
+A atualização pré-publicação usou feed de ensaio com arquivos assinados do rascunho;
+as validações são as do atualizador instalado. Após publicar, o feed público real,
+a assinatura fixada e a detecção de versão atual/disponível passaram sem instalar
+no PC do desenvolvedor. Um worker, zero chamadas novas a modelos nesta validação.
+SHA-256: dcb92eec674ead792ba221f03a22c862791ab908ea572190e91601c029219150.
+Os relatos abaixo são históricos; a presente seção prevalece sobre estados antigos.
+
 ## Regras de trabalho
 
 Correção posterior de **08/11/2026**: normalização nativa de caminhos Windows
